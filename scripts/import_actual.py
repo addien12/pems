@@ -163,7 +163,7 @@ def main():
     print(f"Sheet           : {SHEET}")
     print(f"SHA-256         : {file_hash}")
     print(f"Tanggal laporan : {report_date}")
-    print(f"Jumlah divisi   : 24")
+    print("Jumlah divisi   : 24")
     print(f"Jumlah record   : {len(records)}")
     print(f"Total aktual    : {total:,.4f} ton")
     print(f"Mode            : {'COMMIT' if args.commit else 'UJI COBA'}")

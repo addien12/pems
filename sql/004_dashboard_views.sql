@@ -59,8 +59,10 @@ SELECT
 FROM divisions d
 JOIN estates e
     ON e.id = d.estate_id
-CROSS JOIN latest_budget_batch lb
-CROSS JOIN latest_actual_batch la
+    LEFT JOIN latest_budget_batch lb
+        ON TRUE
+    LEFT JOIN latest_actual_batch la
+        ON TRUE
 LEFT JOIN budget b
     ON b.division_id = d.id
 LEFT JOIN actual a

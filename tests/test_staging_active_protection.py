@@ -5,8 +5,6 @@ import tempfile
 import importlib
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 mod = importlib.import_module("app.import_routes")
 mod.STAGING.mkdir(parents=True, exist_ok=True)
