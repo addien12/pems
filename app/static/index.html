@@ -399,6 +399,55 @@ tbody tr:hover { background:#f1f6fc; }
   #today { display:none; }
 }
 
+/* ===== DATA OPERATIONS ===== */
+.data-health {
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:14px 17px; margin:0 0 22px; border:1px solid var(--line);
+  border-radius:13px; background:#fbfcfe; box-shadow:var(--shadow);
+}
+.data-health-copy { display:flex; align-items:center; gap:11px; min-width:0; }
+.health-dot { width:10px; height:10px; flex:0 0 auto; border-radius:50%; background:#d99419; box-shadow:0 0 0 4px #fff3d8; }
+.health-dot.ready { background:#15966b; box-shadow:0 0 0 4px #e2f6ed; }
+.health-dot.empty { background:#78869a; box-shadow:0 0 0 4px #edf1f6; }
+.health-dot.error { background:#c63c50; box-shadow:0 0 0 4px #ffeaed; }
+.data-health strong { font-size:12px; }
+.data-health small { display:block; color:var(--muted); font-size:11px; margin-top:2px; }
+.data-health-meta { color:var(--muted); font-size:11px; text-align:right; }
+.online.offline { color:#ffc5ce; }
+.online.offline .online-dot { background:#e15b70; box-shadow:0 0 0 3px rgba(225,91,112,.14); }
+.btn-secondary { background:#fff; color:var(--navy); font-weight:750; }
+.modal-backdrop { position:fixed; inset:0; z-index:2000; display:grid; place-items:center; padding:18px; background:rgba(8,25,42,.56); }
+.modal-backdrop[hidden] { display:none; }
+.modal-card { width:min(100%,560px); max-height:min(720px,calc(100vh - 36px)); overflow:auto; padding:25px; border-radius:18px; background:#fff; box-shadow:0 24px 80px rgba(8,25,42,.24); }
+.modal-head { display:flex; justify-content:space-between; gap:16px; align-items:flex-start; margin-bottom:19px; }
+.modal-head h3 { margin:0; font-size:19px; }
+.modal-head p { margin:5px 0 0; color:var(--muted); font-size:12px; }
+.modal-close { width:34px; height:34px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--muted); font-size:20px; }
+.form-grid { display:grid; gap:13px; }
+.form-field { display:grid; gap:6px; }
+.form-field label { color:var(--ink); font-size:12px; font-weight:750; }
+.form-field input, .form-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid var(--line); border-radius:9px; background:#fff; color:var(--ink); }
+.form-hint { color:var(--muted); font-size:11px; line-height:1.5; }
+.import-preview { margin-top:16px; padding:14px; border:1px solid #dcebe7; border-radius:11px; background:#f4fbf9; }
+.import-preview[hidden] { display:none; }
+.preview-title { color:var(--teal); font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
+.preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:10px; }
+.preview-stat { padding:9px; border-radius:8px; background:#fff; }
+.preview-stat span { display:block; color:var(--muted); font-size:10px; }
+.preview-stat strong { display:block; margin-top:3px; font-size:14px; }
+.modal-actions { display:flex; justify-content:flex-end; gap:9px; margin-top:19px; }
+.import-status { min-height:18px; margin-top:12px; color:var(--muted); font-size:11px; }
+.import-status.error { color:var(--red); }
+.import-status.success { color:var(--green); }
+@media(max-width:720px) {
+  .data-health { align-items:flex-start; flex-direction:column; gap:10px; }
+  .data-health-meta { text-align:left; }
+  .modal-card { padding:19px; }
+  .preview-grid { grid-template-columns:1fr; }
+  .modal-actions { flex-direction:column-reverse; }
+  .modal-actions .btn { width:100%; }
+}
+
 </style>
 </head>
 <body>
@@ -414,10 +463,11 @@ tbody tr:hover { background:#f1f6fc; }
   <a class="nav-link" href="#charts"><span class="ico">▥</span>Monitoring Produksi</a>
   <a class="nav-link" href="#divisionPanel"><span class="ico">▤</span>Pencapaian Divisi</a>
   <div class="nav-label">PENGELOLAAN DATA</div>
+  <a class="nav-link" href="#importDialog" id="openImportNav"><span class="ico">⇧</span>Impor Data Excel</a>
   <a class="nav-link" href="/docs"><span class="ico">⇧</span>API & Dokumentasi</a>
   <div class="side-bottom">
-    <div class="online"><span class="online-dot"></span> Database terhubung</div>
-    <div class="side-version">PEMS Dashboard · Versi 1.0</div>
+    <div class="online" id="connectionState"><span class="online-dot"></span> Memeriksa database...</div>
+    <div class="side-version">PEMS Dashboard · Versi 1.1</div>
   </div>
 </aside>
 
@@ -443,8 +493,17 @@ tbody tr:hover { background:#f1f6fc; }
         <select id="estateFilter" aria-label="Filter estate">
           <option value="">Semua Estate</option>
         </select>
+        <button class="btn btn-secondary" id="openImportBtn">＋ Impor data</button>
         <button class="btn btn-primary" id="refreshBtn">↻ Muat ulang</button>
       </div>
+    </section>
+
+    <section class="data-health" aria-live="polite">
+      <div class="data-health-copy">
+        <span class="health-dot empty" id="healthDot"></span>
+        <div><strong id="healthTitle">Status data belum diketahui</strong><small id="healthDetail">Memeriksa batch anggaran dan realisasi...</small></div>
+      </div>
+      <div class="data-health-meta" id="healthMeta">—</div>
     </section>
 
     <section class="kpis">
@@ -547,7 +606,7 @@ tbody tr:hover { background:#f1f6fc; }
         </table>
       </div>
       <div class="table-footer"><span id="tableCount">Menunggu data</span><span>Ton tanpa desimal · Persentase 2 desimal</span></div>
-      <div class="status" id="status">Menghubungkan ke API PEMS...</div>
+      <div class="status" id="status" role="status" aria-live="polite">Menghubungkan ke API PEMS...</div>
     </section>
 
     <footer class="footer">
@@ -555,6 +614,28 @@ tbody tr:hover { background:#f1f6fc; }
       <span>Data bersumber dari PostgreSQL · Ton tanpa desimal · Persentase 2 desimal</span>
     </footer>
   </main>
+</div>
+</div>
+<div class="modal-backdrop" id="importDialog" hidden role="dialog" aria-modal="true" aria-labelledby="importTitle">
+  <section class="modal-card">
+    <div class="modal-head">
+      <div><h3 id="importTitle">Impor data produksi</h3><p>Validasi workbook sebelum data masuk ke database.</p></div>
+      <button class="modal-close" id="closeImportBtn" type="button" aria-label="Tutup dialog">×</button>
+    </div>
+    <form id="importForm" class="form-grid">
+      <div class="form-field"><label for="importKind">Jenis data</label><select id="importKind"><option value="budget">Budget Produksi</option><option value="actual">Produksi Aktual</option></select></div>
+      <div class="form-field"><label for="importFile">Workbook Excel (.xlsx)</label><input id="importFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><span class="form-hint">Maksimal 20 MB. Pastikan sheet dan format mengikuti template PEMS.</span></div>
+      <div class="form-field"><label for="importApiKey">API key impor</label><input id="importApiKey" type="password" autocomplete="off" required><span class="form-hint">Key hanya digunakan selama sesi ini dan tidak disimpan browser.</span></div>
+      <button class="btn btn-primary" type="submit" id="previewImportBtn">Validasi & tampilkan preview</button>
+    </form>
+    <div class="import-preview" id="importPreview" hidden>
+      <div class="preview-title">Preview tervalidasi</div>
+      <div class="preview-grid"><div class="preview-stat"><span>File</span><strong id="previewFile">—</strong></div><div class="preview-stat"><span>Tanggal laporan</span><strong id="previewDate">—</strong></div><div class="preview-stat"><span>Total record</span><strong id="previewRecords">—</strong></div></div>
+      <div class="form-hint" style="margin-top:10px">Periksa ringkasan ini sebelum mengonfirmasi penyimpanan.</div>
+    </div>
+    <div class="import-status" id="importStatus" aria-live="polite"></div>
+    <div class="modal-actions"><button class="btn" type="button" id="cancelImportBtn">Batal</button><button class="btn btn-primary" type="button" id="confirmImportBtn" disabled>Konfirmasi impor</button></div>
+  </section>
 </div>
 <script>
 const $ = id => document.getElementById(id);
@@ -570,8 +651,53 @@ let allDivisions = [];
 
 async function getJSON(url) {
   const response = await fetch(url, {cache:'no-store'});
-  if (!response.ok) throw new Error('API gagal: ' + response.status);
+  if (!response.ok) {
+    const error = new Error(
+      response.status === 503
+        ? 'Database belum terhubung. Pastikan PostgreSQL aktif dan DATABASE_URL benar.'
+        : `API gagal: ${response.status}`
+    );
+    error.status = response.status;
+    throw error;
+  }
   return response.json();
+}
+function updateConnectionState(connected) {
+  const node = $('connectionState');
+  node.className = connected ? 'online' : 'online offline';
+  node.innerHTML = connected
+    ? '<span class="online-dot"></span> Database terhubung'
+    : '<span class="online-dot"></span> Database tidak terhubung';
+}
+function showConnectionError(error) {
+  updateConnectionState(false);
+  $('healthDot').className = 'health-dot error';
+  $('healthTitle').textContent = 'Koneksi database bermasalah';
+  $('healthDetail').textContent = error.status === 503
+    ? 'Pastikan PostgreSQL aktif, DATABASE_URL benar, lalu tekan Muat ulang.'
+    : error.message;
+  $('healthMeta').textContent = 'Menunggu koneksi';
+}
+function updateDataHealth(summary) {
+  const budgetDate = summary?.tanggal_laporan_anggaran;
+  const actualDate = summary?.tanggal_laporan_realisasi;
+  const dot = $('healthDot');
+  const title = $('healthTitle');
+  const detail = $('healthDetail');
+  if (budgetDate && actualDate) {
+    dot.className = 'health-dot ready';
+    title.textContent = 'Data budget dan realisasi lengkap';
+    detail.textContent = `Budget ${budgetDate} · Realisasi ${actualDate}`;
+  } else if (budgetDate || actualDate) {
+    dot.className = 'health-dot';
+    title.textContent = 'Data belum lengkap';
+    detail.textContent = budgetDate ? 'Budget tersedia, realisasi belum diimpor.' : 'Realisasi tersedia, budget belum diimpor.';
+  } else {
+    dot.className = 'health-dot empty';
+    title.textContent = 'Belum ada batch impor';
+    detail.textContent = 'Impor budget dan realisasi untuk mulai memantau kinerja.';
+  }
+  $('healthMeta').textContent = `${summary?.jumlah_estate || 0} estate · ${summary?.jumlah_divisi || 0} divisi aktif`;
 }
 function renderChart(target, items, field, isActual) {
   const node = $(target);
@@ -767,6 +893,8 @@ async function loadDashboard() {
     dashboardSummary = summary;
     allEstates = estateResult.items || [];
     allDivisions = divisionResult.items || [];
+    updateConnectionState(true);
+    updateDataHealth(summary);
     const select = $('estateFilter');
     const previous = select.value;
     select.innerHTML = '<option value="">Semua Estate</option>' +
@@ -778,7 +906,8 @@ async function loadDashboard() {
     applyFilter();
     $('status').textContent = 'Data berhasil dimuat · ' + allEstates.length + ' estate · ' + allDivisions.length + ' divisi';
   } catch(error) {
-    $('status').textContent = 'Gagal memuat data: ' + error.message;
+    showConnectionError(error);
+    $('status').textContent = error.message + ' Tekan “Muat ulang” untuk mencoba lagi.';
     $('status').className = 'status error';
   } finally {
     $('refreshBtn').disabled = false;
@@ -787,6 +916,101 @@ async function loadDashboard() {
 $('estateFilter').addEventListener('change', applyFilter);
 $('divisionSort').addEventListener('change', applyFilter);
 $('refreshBtn').addEventListener('click', loadDashboard);
+let importToken = null;
+let importKey = '';
+const importDialog = $('importDialog');
+function setImportStatus(message, state = '') {
+  const node = $('importStatus');
+  node.textContent = message;
+  node.className = 'import-status' + (state ? ' ' + state : '');
+}
+function openImportDialog() {
+  importDialog.hidden = false;
+  $('importKind').focus();
+}
+function closeImportDialog() {
+  importDialog.hidden = true;
+  importToken = null;
+  importKey = '';
+  $('importForm').reset();
+  $('importPreview').hidden = true;
+  $('confirmImportBtn').disabled = true;
+  setImportStatus('');
+}
+async function parseApiError(response) {
+  try {
+    const body = await response.json();
+    return body.detail || `API gagal: ${response.status}`;
+  } catch (_) {
+    return `API gagal: ${response.status}`;
+  }
+}
+$('openImportBtn').addEventListener('click', openImportDialog);
+$('openImportNav').addEventListener('click', event => {
+  event.preventDefault();
+  openImportDialog();
+});
+$('closeImportBtn').addEventListener('click', closeImportDialog);
+$('cancelImportBtn').addEventListener('click', closeImportDialog);
+importDialog.addEventListener('click', event => {
+  if (event.target === importDialog) closeImportDialog();
+});
+$('importForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const file = $('importFile').files[0];
+  const key = $('importApiKey').value.trim();
+  if (!file || !key) {
+    setImportStatus('Pilih workbook dan masukkan API key terlebih dahulu.', 'error');
+    return;
+  }
+  const button = $('previewImportBtn');
+  button.disabled = true;
+  setImportStatus('Memvalidasi workbook...');
+  try {
+    const form = new FormData();
+    form.append('kind', $('importKind').value);
+    form.append('file', file);
+    const response = await fetch('/api/import/preview', {
+      method: 'POST',
+      headers: {'X-PEMS-Import-Key': key},
+      body: form
+    });
+    if (!response.ok) throw new Error(await parseApiError(response));
+    const preview = await response.json();
+    importToken = preview.token;
+    importKey = key;
+    $('previewFile').textContent = preview.filename;
+    $('previewDate').textContent = preview.report_date;
+    $('previewRecords').textContent = Number(preview.record_count).toLocaleString('id-ID');
+    $('importPreview').hidden = false;
+    $('confirmImportBtn').disabled = false;
+    setImportStatus('Preview valid. Konfirmasi hanya setelah isi file dipastikan benar.', 'success');
+  } catch (error) {
+    setImportStatus(error.message, 'error');
+  } finally {
+    button.disabled = false;
+  }
+});
+$('confirmImportBtn').addEventListener('click', async () => {
+  if (!importToken || !importKey) return;
+  const button = $('confirmImportBtn');
+  button.disabled = true;
+  setImportStatus('Menyimpan impor ke database...');
+  try {
+    const response = await fetch('/api/import/confirm', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-PEMS-Import-Key': importKey},
+      body: JSON.stringify({token: importToken})
+    });
+    if (!response.ok) throw new Error(await parseApiError(response));
+    setImportStatus('Impor berhasil disimpan. Dashboard akan diperbarui.', 'success');
+    await loadDashboard();
+    setTimeout(closeImportDialog, 900);
+  } catch (error) {
+    setImportStatus(error.message, 'error');
+    button.disabled = false;
+  }
+});
 const sidebar = document.querySelector('.sidebar');
 const sidebarOverlay = $('sidebarOverlay');
 const menuBtn = $('menuBtn');
