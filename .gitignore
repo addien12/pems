@@ -1,0 +1,78 @@
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+!.env.example.*
+*.pem
+*.key
+
+# Logs and runtime files
+*.log
+*.pid
+logs/
+
+# Databases and database exports
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+
+# Backups
+backups/
+*.bak
+*.bak.*
+*.bak_*
+*.backup
+*.backup.*
+*.backup-*
+*.old
+*.orig
+*~
+
+# Imported operational data
+imports/
+*.xlsx
+*.xls
+*.xlsm
+*.csv
+
+# Generated packages and build artifacts
+dist/
+package_staging/
+build/
+*.zip
+
+# Local wheel-build sources
+build_wheels/src/
+
+# Legacy starter snapshot
+PEMS_starter_v01/
+
+# Editor and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Temporary documentation and dependency backups
+README.md.backup*
+installer/requirements.txt.backup*
+
+# All backup file naming variants
+*.bak*
+*.backup*

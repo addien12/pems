@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#142b4a">
+<title>PEMS | Professional Dashboard</title>
+<style>
+:root {
+  --navy:#142b4a;
+  --navy2:#1e4168;
+  --blue:#3767d5;
+  --teal:#168b83;
+  --green:#15966b;
+  --amber:#d99419;
+  --red:#d94b59;
+  --bg:#f3f6fb;
+  --card:#fff;
+  --ink:#1d2b42;
+  --muted:#78869a;
+  --line:#e7ecf3;
+  --shadow:0 5px 22px rgba(25,46,77,.055);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif
+}
+button,select{font:inherit}
+button{cursor:pointer}
+.app{min-height:100vh}
+.sidebar{
+  position:fixed;inset:0 auto 0 0;width:245px;
+  background:var(--navy);color:#d7e3f3;
+  display:flex;flex-direction:column;z-index:10;
+}
+.brand{
+  height:88px;display:flex;align-items:center;gap:12px;
+  padding:0 24px;border-bottom:1px solid #ffffff13;
+}
+.brand-mark{
+  width:42px;height:42px;border-radius:12px;
+  display:grid;place-items:center;background:#ffffff18;
+  color:#72ddd0;font-weight:900;font-size:22px
+}
+.brand-name{font-size:22px;font-weight:850;letter-spacing:1.5px;color:white}
+.brand-sub{font-size:10px;color:#a7bbd5;letter-spacing:.5px}
+.nav-label{
+  padding:25px 24px 10px;color:#829ab8;
+  font-size:10px;font-weight:800;letter-spacing:1.5px
+}
+.nav-link{
+  display:flex;align-items:center;gap:13px;
+  margin:3px 12px;padding:12px 14px;border-radius:9px;
+  color:#c5d3e6;text-decoration:none;font-size:13px;
+  transition:.15s
+}
+.nav-link .ico{width:22px;text-align:center;font-size:17px}
+.nav-link.active{background:#ffffff19;color:white;font-weight:750}
+.nav-link.active:before{
+  content:"";position:absolute;left:0;width:4px;height:40px;
+  background:#59d0bd;border-radius:0 5px 5px 0
+}
+.nav-link:hover{background:#ffffff12}
+.side-bottom{margin-top:auto;padding:18px 22px;border-top:1px solid #ffffff13}
+.online{display:flex;align-items:center;gap:8px;font-size:12px;color:#b9cbe0}
+.online-dot{width:8px;height:8px;border-radius:50%;background:#43d6a3}
+.side-version{font-size:10px;color:#829ab8;margin-top:7px}
+.main{margin-left:245px;min-height:100vh}
+.topbar{
+  min-height:88px;background:#fff;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:17px 32px;gap:16px
+}
+.eyebrow{font-size:11px;color:var(--muted);margin-bottom:3px}
+.page-title{font-size:22px;font-weight:800;letter-spacing:-.5px}
+.top-right{display:flex;align-items:center;gap:12px}
+.date-chip{
+  padding:9px 13px;border:1px solid var(--line);
+  border-radius:10px;background:#fafbfd;color:#56657a;font-size:12px
+}
+.avatar{
+  width:39px;height:39px;display:grid;place-items:center;
+  border-radius:12px;background:#e5f4f2;color:#167d78;font-weight:850
+}
+.content{max-width:1600px;margin:auto;padding:28px 32px 24px}
+.welcome{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:15px;margin-bottom:22px
+}
+.welcome h2{font-size:20px;margin:0 0 4px;font-weight:800}
+.welcome p{color:var(--muted);margin:0;font-size:13px}
+.toolbar{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+select,.btn{
+  min-height:40px;border:1px solid var(--line);border-radius:9px;
+  padding:9px 12px;background:#fff;color:var(--ink)
+}
+.btn-primary{background:var(--blue);border-color:var(--blue);color:white;font-weight:700}
+.btn:disabled{opacity:.6;cursor:wait}
+.kpis{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:16px;margin-bottom:19px
+}
+.card{
+  background:var(--card);border:1px solid var(--line);
+  border-radius:15px;box-shadow:var(--shadow);min-width:0
+}
+.kpi{padding:19px 19px 17px;position:relative;overflow:hidden}
+.kpi-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.kpi-label{font-size:12px;color:var(--muted);font-weight:650}
+.kpi-icon{
+  width:37px;height:37px;display:grid;place-items:center;
+  border-radius:11px;font-size:18px;background:#eaf0ff;color:var(--blue)
+}
+.kpi:nth-child(2) .kpi-icon{background:#e1f6ee;color:var(--green)}
+.kpi:nth-child(3) .kpi-icon{background:#fff2dd;color:var(--amber)}
+.kpi:nth-child(4) .kpi-icon{background:#e0f5f2;color:var(--teal)}
+.kpi-value{font-size:clamp(23px,2.1vw,31px);font-weight:850;letter-spacing:-1px;margin-top:13px;overflow-wrap:anywhere}
+.kpi-unit{font-size:11px;color:var(--muted);margin-top:4px}
+.kpi-foot{font-size:11px;color:var(--muted);margin-top:12px}
+.kpi-foot strong{color:var(--ink)}
+.panel{padding:21px;margin-bottom:19px}
+.panel-head{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  gap:12px;margin-bottom:17px
+}
+.panel-title{font-size:15px;font-weight:800;margin:0}
+.panel-subtitle{font-size:11px;color:var(--muted);margin-top:4px}
+.tag{
+  display:inline-flex;align-items:center;gap:6px;padding:5px 9px;
+  border-radius:7px;background:#edf7f5;color:#168078;font-size:10px;font-weight:750
+}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:19px;margin-bottom:19px}
+.charts .panel{margin:0}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:3px}
+.chart-list{display:flex;flex-direction:column;gap:15px}
+.bar-info{display:flex;justify-content:space-between;gap:8px;margin-bottom:6px;font-size:12px}
+.bar-info strong{font-weight:750}
+.bar-info span{color:#58677b;font-variant-numeric:tabular-nums}
+.track{height:9px;background:#edf1f6;border-radius:10px;overflow:hidden}
+.bar{height:100%;width:0;border-radius:10px;background:var(--blue);transition:width .4s}
+.bar.actual{background:var(--teal)}
+.chart-empty{color:var(--muted);font-size:12px;padding:15px 0}
+.table-panel{padding:0;overflow:hidden}
+.table-header{padding:21px 22px 16px;display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.table-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:760px}
+thead{background:#f8fafd}
+th,td{padding:13px 15px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-size:12px}
+th{font-size:10px;letter-spacing:.3px;text-transform:uppercase;color:#7c899b;font-weight:800}
+th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+tbody tr:hover{background:#fafcff}
+td:first-child{font-weight:800;color:#233c5d}
+.num{font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;justify-content:center;min-width:57px;padding:5px 8px;border-radius:7px;font-size:11px;font-weight:800}
+.good{color:#08784f;background:#e1f6ec}
+.warn{color:#9b680a;background:#fff1d2}
+.bad{color:#b72e43;background:#ffe7eb}
+.table-footer{
+  display:flex;justify-content:space-between;align-items:center;
+  gap:10px;padding:13px 20px;color:var(--muted);font-size:11px
+}
+.status{font-size:11px;color:var(--muted);padding:0 22px 16px}
+.status.error{color:var(--red)}
+.footer{padding:2px 0 16px;color:#8894a5;font-size:11px;display:flex;justify-content:space-between;gap:10px}
+.mobile-menu{display:none}
+@media(max-width:1100px){
+  .sidebar{width:215px}.main{margin-left:215px}
+  .content{padding:23px 20px}.topbar{padding:15px 20px}
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:720px){
+  .sidebar{
+    display:flex;
+    width: min(82vw, 300px);
+    transform:translateX(-100%);
+    transition:transform .22s ease;
+    z-index:1001;
+  }
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(8,25,42,.48);
+    z-index:1000;
+    display:none;
+  }
+  .sidebar-overlay.open{display:block}
+  body.sidebar-open{overflow:hidden}
+  .main{margin-left:0}
+  .topbar{min-height:70px;padding:12px 16px}
+  .page-title{font-size:19px}
+  .mobile-menu{
+    display:grid;place-items:center;width:38px;height:38px;
+    border:1px solid var(--line);border-radius:9px;background:#fff;
+    color:var(--navy);font-size:20px;flex-shrink:0
+  }
+  .top-left{display:flex;align-items:center;gap:10px}
+  .top-right .date-chip{display:none}
+  .content{padding:20px 13px}
+  .welcome{display:block}
+  .welcome h2{font-size:18px}
+  .toolbar{margin-top:14px}
+  .toolbar select{flex:1;min-width:130px}
+  .kpis{gap:10px}
+  .kpi{padding:14px}
+  .kpi-value{font-size:24px;margin-top:9px}
+  .kpi-icon{width:31px;height:31px;font-size:15px}
+  .kpi-foot{line-height:1.4}
+  .charts{grid-template-columns:1fr;gap:13px}
+  .panel{padding:16px}
+  .table-header{padding:17px 15px 13px}
+  th,td{padding:12px 11px}
+  .footer{padding:4px 2px 18px;flex-direction:column}
+}
+
+/* ===== PEMS EXECUTIVE REFINEMENT ===== */
+:root {
+  --navy:#122740;
+  --navy2:#1b3c5d;
+  --blue:#315fc4;
+  --teal:#14877d;
+  --bg:#f4f6f9;
+  --ink:#1b2b40;
+  --muted:#78879a;
+  --line:#e6ebf1;
+  --shadow:0 7px 26px rgba(22,42,66,.045);
+}
+body { letter-spacing:.04px; }
+.sidebar { box-shadow:4px 0 22px rgba(16,36,59,.05); }
+.brand { height:94px; }
+.main { min-width:0; }
+.topbar { min-height:94px; padding:20px 36px; }
+.page-title { font-size:25px; letter-spacing:-.7px; }
+.content { max-width:1720px; padding:32px 36px 26px; }
+.welcome { margin-bottom:25px; align-items:center; }
+.welcome h2 { font-size:22px; letter-spacing:-.45px; }
+.welcome p { font-size:13px; margin-top:5px; }
+.kpis { gap:18px; margin-bottom:22px; }
+.kpi { padding:23px; border-radius:16px; }
+.kpi-value { font-size:clamp(25px,2.15vw,34px); }
+.card { border-radius:16px; }
+.panel { padding:24px; margin-bottom:22px; }
+.charts { gap:22px; margin-bottom:22px; }
+.panel-title { font-size:16px; }
+.chart-list { gap:19px; }
+.track { height:10px; }
+.table-panel { padding:0; }
+.table-header { padding:24px 26px 18px; }
+table { min-width:790px; }
+th,td { padding:15px 18px; }
+tbody tr:nth-child(even) { background:#fbfcfe; }
+tbody tr:hover { background:#f1f6fc; }
+.pill { min-width:62px; padding:6px 9px; }
+.division-cards { display:none; }
+.division-card { background:#fff; }
+.positive { color:#11805d !important; }
+.negative { color:#bd4050 !important; }
+.progress-track { height:5px; border-radius:9px; background:#edf1f5; overflow:hidden; }
+.progress-fill { height:100%; border-radius:9px; background:var(--teal); }
+.progress-fill.good { background:#16966b; }
+.progress-fill.warn { background:#d69a29; }
+.progress-fill.bad { background:#d94b59; }
+.empty-card { padding:20px; text-align:center; color:var(--muted); }
+@media(min-width:1200px) {
+  .kpi { min-height:160px; }
+  .charts .panel { min-height:300px; }
+  .table-header { padding-left:28px; padding-right:28px; }
+}
+@media(max-width:720px) {
+  .topbar { min-height:72px; padding:12px 14px; }
+  .page-title { font-size:18px; }
+  .content { padding:21px 14px 20px; }
+  .welcome h2 { font-size:19px; }
+  .kpis { gap:11px; }
+  .kpi { padding:15px 13px; border-radius:14px; min-height:137px; }
+  .kpi-value { font-size:clamp(22px,6vw,27px); letter-spacing:-.6px; }
+  .kpi-label { font-size:10px; }
+  .kpi-foot { font-size:10px; }
+  .panel { padding:17px; border-radius:14px; }
+  .charts { gap:14px; }
+  .table-header { padding:18px 16px 14px; }
+  .table-panel > .legend { padding-left:17px !important; }
+  .table-wrap { display:none; }
+  .division-cards {
+    display:grid;
+    grid-template-columns:1fr;
+    gap:11px;
+    padding:0 13px 15px;
+  }
+  .division-card {
+    border:1px solid var(--line);
+    border-radius:13px;
+    padding:15px;
+    box-shadow:0 3px 12px rgba(22,42,66,.035);
+  }
+  .division-card-head {
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    margin-bottom:12px;
+  }
+  .division-name { font-size:15px; font-weight:850; color:var(--navy); }
+  .division-estate { color:var(--muted); font-size:11px; margin-top:2px; }
+  .division-metrics {
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:7px;
+    margin-top:13px;
+  }
+  .metric {
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+    padding:9px 7px;
+    border-radius:9px;
+    background:#f7f9fc;
+  }
+  .metric span { color:var(--muted); font-size:10px; }
+  .metric strong {
+    font-size:clamp(13px,3.8vw,16px);
+    line-height:1.35;
+    font-weight:850;
+    overflow-wrap:anywhere;
+    font-variant-numeric:tabular-nums;
+  }
+  .metric small { color:var(--muted); font-size:9px; }
+  .table-footer { padding:12px 16px; }
+  .status { padding:0 16px 16px; }
+  .footer { line-height:1.7; }
+}
+
+
+/* ===== EXECUTIVE PERFORMANCE INSIGHTS ===== */
+.insight-grid {
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:16px;
+  margin:0 0 22px;
+}
+.insight-card {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  padding:18px 20px;
+  min-width:0;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:15px;
+  box-shadow:var(--shadow);
+}
+.insight-icon {
+  display:grid;
+  place-items:center;
+  width:43px;
+  height:43px;
+  flex-shrink:0;
+  border-radius:12px;
+  font-size:20px;
+  font-weight:850;
+}
+.insight-green {background:#e3f6ed;color:#13835b}
+.insight-red {background:#ffeaed;color:#c63c50}
+.insight-blue {background:#e8efff;color:#315fc4}
+.insight-copy {display:flex;flex-direction:column;min-width:0;gap:2px}
+.insight-copy span {font-size:11px;color:var(--muted)}
+.insight-copy strong {font-size:22px;line-height:1.35;font-weight:850;overflow-wrap:anywhere}
+.insight-copy small {font-size:10px;color:var(--muted)}
+@media(max-width:720px) {
+  .insight-grid {grid-template-columns:1fr;gap:9px;margin-bottom:15px}
+  .insight-card {padding:13px 15px;border-radius:13px;gap:12px}
+  .insight-icon {width:38px;height:38px;font-size:18px}
+  .insight-copy strong {font-size:19px}
+}
+\n
+/* ===== PEMS MONITORING V2 ===== */
+.comparison-panel { margin-bottom:22px; }
+.comparison-legend { padding:0 0 18px; }
+.comparison-list { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 30px; }
+.comparison-row { min-width:0; }
+.comparison-info { display:flex; justify-content:space-between; gap:10px; margin-bottom:8px; font-size:12px; }
+.comparison-info strong { color:var(--navy); }
+.comparison-info span { color:var(--muted); text-align:right; font-variant-numeric:tabular-nums; }
+.comparison-bars { display:grid; gap:5px; }
+.budget-bar { background:#315fc4; }
+.table-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.table-actions select { max-width:210px; font-size:11px; min-height:35px; padding:7px 9px; }
+#today { max-width:360px; line-height:1.5; }
+@media(max-width:720px) {
+  .comparison-list { grid-template-columns:1fr; gap:17px; }
+  .comparison-info { font-size:11px; }
+  .table-header { flex-wrap:wrap; }
+  .table-actions { width:100%; justify-content:space-between; }
+  .table-actions select { flex:1; max-width:none; min-width:0; }
+  #today { display:none; }
+}
+
+</style>
+</head>
+<body>
+<div class="app">
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">P</div>
+    <div><div class="brand-name">PEMS</div><div class="brand-sub">ESTATE MONITORING SYSTEM</div></div>
+  </div>
+  <div class="nav-label">MENU UTAMA</div>
+  <a class="nav-link active" href="#dashboard"><span class="ico">▦</span>Dashboard</a>
+  <a class="nav-link" href="#charts"><span class="ico">▥</span>Monitoring Produksi</a>
+  <a class="nav-link" href="#divisionPanel"><span class="ico">▤</span>Pencapaian Divisi</a>
+  <div class="nav-label">PENGELOLAAN DATA</div>
+  <a class="nav-link" href="/docs"><span class="ico">⇧</span>API & Dokumentasi</a>
+  <div class="side-bottom">
+    <div class="online"><span class="online-dot"></span> Database terhubung</div>
+    <div class="side-version">PEMS Dashboard · Versi 1.0</div>
+  </div>
+</aside>
+
+<div class="main" id="dashboard">
+  <header class="topbar">
+    <div class="top-left">
+      <button class="mobile-menu" id="menuBtn" aria-label="Buka menu">☰</button>
+      <div><div class="eyebrow">PALM ESTATE MONITORING SYSTEM</div><div class="page-title">Dashboard Produksi</div></div>
+    </div>
+    <div class="top-right">
+      <div class="date-chip" id="today">Laporan produksi</div>
+      <div class="avatar">P</div>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="welcome">
+      <div>
+        <h2>Ringkasan Kinerja Produksi</h2>
+        <p>Pantau anggaran dan realisasi produksi seluruh estate.</p>
+      </div>
+      <div class="toolbar">
+        <select id="estateFilter" aria-label="Filter estate">
+          <option value="">Semua Estate</option>
+        </select>
+        <button class="btn btn-primary" id="refreshBtn">↻ Muat ulang</button>
+      </div>
+    </section>
+
+    <section class="kpis">
+      <article class="card kpi">
+        <div class="kpi-top"><div class="kpi-label">TOTAL ANGGARAN</div><div class="kpi-icon">▤</div></div>
+        <div class="kpi-value" id="budget">—</div>
+        <div class="kpi-unit">Ton</div>
+        <div class="kpi-foot">Anggaran produksi terpilih</div>
+      </article>
+      <article class="card kpi">
+        <div class="kpi-top"><div class="kpi-label">TOTAL REALISASI</div><div class="kpi-icon">↗</div></div>
+        <div class="kpi-value" id="actual">—</div>
+        <div class="kpi-unit">Ton</div>
+        <div class="kpi-foot">Realisasi produksi terpilih</div>
+      </article>
+      <article class="card kpi">
+        <div class="kpi-top"><div class="kpi-label">SELISIH PRODUKSI</div><div class="kpi-icon">⇄</div></div>
+        <div class="kpi-value" id="variance">—</div>
+        <div class="kpi-unit">Ton · Realisasi − anggaran</div>
+        <div class="kpi-foot" id="varianceNote">Perbandingan anggaran</div>
+      </article>
+      <article class="card kpi">
+        <div class="kpi-top"><div class="kpi-label">PENCAPAIAN</div><div class="kpi-icon">◉</div></div>
+        <div class="kpi-value" id="achievement">—</div>
+        <div class="kpi-unit">Persentase anggaran</div>
+        <div class="kpi-foot" id="achievementNote">Kinerja produksi</div>
+      </article>
+    </section>
+
+    <section class="insight-grid" aria-label="Ringkasan kinerja estate">
+      <article class="insight-card">
+        <div class="insight-icon insight-green">✓</div>
+        <div class="insight-copy">
+          <span>Divisi mencapai target</span>
+          <strong id="targetCount">—</strong>
+          <small>Pencapaian minimal 100%</small>
+        </div>
+      </article>
+      <article class="insight-card">
+        <div class="insight-icon insight-red">!</div>
+        <div class="insight-copy">
+          <span>Divisi perlu perhatian</span>
+          <strong id="attentionCount">—</strong>
+          <small>Pencapaian di bawah 80%</small>
+        </div>
+      </article>
+      <article class="insight-card">
+        <div class="insight-icon insight-blue">★</div>
+        <div class="insight-copy">
+          <span>Estate terbaik</span>
+          <strong id="bestEstate">—</strong>
+          <small id="bestEstatePct">Menunggu data</small>
+        </div>
+      </article>
+    </section>
+
+    <section class="card panel comparison-panel" id="charts">
+  <div class="panel-head">
+    <div>
+      <h3 class="panel-title">Anggaran vs Realisasi per Estate</h3>
+      <div class="panel-subtitle">Perbandingan volume produksi untuk setiap estate</div>
+    </div>
+    <span class="tag">TON</span>
+  </div>
+  <div class="legend comparison-legend">
+    <span><i style="background:#315fc4"></i> Anggaran</span>
+    <span><i style="background:#14877d"></i> Realisasi</span>
+  </div>
+  <div id="comparisonChart" class="comparison-list">
+    <div class="chart-empty">Memuat grafik...</div>
+  </div>
+</section>
+
+<section class="card table-panel" id="divisionPanel">
+      <div class="table-header">
+        <div><h3 class="panel-title">Monitoring Pencapaian Divisi</h3><div class="panel-subtitle" id="tableSubtitle">Perbandingan anggaran dan realisasi per divisi</div></div>
+        <div class="table-actions">
+          <select id="divisionSort" aria-label="Urutkan divisi">
+            <option value="estate">Urutan estate</option>
+            <option value="highest">Pencapaian tertinggi</option>
+            <option value="lowest">Pencapaian terendah</option>
+            <option value="variance">Selisih terbesar</option>
+          </select>
+          <span class="tag" id="divisionCount">24 DIVISI</span>
+        </div>
+      </div>
+      <div class="legend" style="padding:0 22px 15px">
+        <span><i style="background:var(--green)"></i> ≥ 100%</span>
+        <span><i style="background:var(--amber)"></i> 80–99%</span>
+        <span><i style="background:var(--red)"></i> &lt; 80%</span>
+      </div>
+      <div id="divisionCards" class="division-cards"></div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Divisi</th><th>Estate</th><th>Anggaran (ton)</th>
+            <th>Realisasi (ton)</th><th>Selisih (ton)</th><th>Pencapaian</th>
+          </tr></thead>
+          <tbody id="divisionRows"><tr><td colspan="6" style="text-align:center">Memuat data...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="table-footer"><span id="tableCount">Menunggu data</span><span>Ton tanpa desimal · Persentase 2 desimal</span></div>
+      <div class="status" id="status">Menghubungkan ke API PEMS...</div>
+    </section>
+
+    <footer class="footer">
+      <span>© PEMS · Palm Estate Monitoring System</span>
+      <span>Data bersumber dari PostgreSQL · Ton tanpa desimal · Persentase 2 desimal</span>
+    </footer>
+  </main>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+const number = value => Math.round(Number(value || 0)).toLocaleString('id-ID');
+const pct = value => value == null ? '—' : Number(value).toLocaleString('id-ID', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2
+}) + '%';
+const tons = value => number(value) + ' ton';
+let allEstates = [];
+let dashboardSummary = null;
+let allDivisions = [];
+
+async function getJSON(url) {
+  const response = await fetch(url, {cache:'no-store'});
+  if (!response.ok) throw new Error('API gagal: ' + response.status);
+  return response.json();
+}
+function renderChart(target, items, field, isActual) {
+  const node = $(target);
+  if (!items.length) {
+    node.innerHTML = '<div class="chart-empty">Tidak ada data untuk ditampilkan.</div>';
+    return;
+  }
+  const max = Math.max(1, ...items.map(x => Number(x[field] || 0)));
+  node.innerHTML = items.map(item => {
+    const value = Number(item[field] || 0);
+    const width = Math.max(0, value / max * 100);
+    return `<div>
+      <div class="bar-info"><strong>${item.estate_code}</strong><span>${number(value)} ton</span></div>
+      <div class="track"><div class="bar ${isActual ? 'actual' : ''}" style="width:${width}%"></div></div>
+    </div>`;
+  }).join('');
+}
+function renderComparisonChart(items) {
+  const node = $('comparisonChart');
+  if (!items.length) {
+    node.innerHTML = '<div class="chart-empty">Tidak ada data untuk ditampilkan.</div>';
+    return;
+  }
+
+  const max = Math.max(1, ...items.map(e =>
+    Math.max(Number(e.anggaran_ton || 0), Number(e.realisasi_ton || 0))
+  ));
+
+  node.innerHTML = items.map(e => {
+    const budget = Number(e.anggaran_ton || 0);
+    const actual = Number(e.realisasi_ton || 0);
+    return `<div class="comparison-row">
+      <div class="comparison-info">
+        <strong>${e.estate_code}</strong>
+        <span>${number(actual)} / ${number(budget)} ton</span>
+      </div>
+      <div class="comparison-bars">
+        <div class="track"><div class="bar budget-bar" style="width:${Math.max(0,budget/max*100)}%"></div></div>
+        <div class="track"><div class="bar actual" style="width:${Math.max(0,actual/max*100)}%"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDivisions(items) {
+  const sortMode = $('divisionSort')?.value || 'estate';
+  const sorted = [...items].sort((a,b) => {
+    const pa = Number(a.pencapaian_persen ?? -1);
+    const pb = Number(b.pencapaian_persen ?? -1);
+    const va = Number(a.selisih_ton || 0);
+    const vb = Number(b.selisih_ton || 0);
+
+    if (sortMode === 'highest') return pb - pa;
+    if (sortMode === 'lowest') return pa - pb;
+    if (sortMode === 'variance') return va - vb;
+
+    return a.estate_code.localeCompare(b.estate_code) ||
+      Number(a.division_number)-Number(b.division_number);
+  });
+
+  $('divisionCount').textContent = sorted.length + ' DIVISI';
+  $('tableCount').textContent = 'Menampilkan ' + sorted.length + ' divisi';
+
+  if (!sorted.length) {
+    $('divisionRows').innerHTML =
+      '<tr><td colspan="6" style="text-align:center">Tidak ada data divisi.</td></tr>';
+    $('divisionCards').innerHTML =
+      '<div class="empty-card">Tidak ada data divisi.</div>';
+    return;
+  }
+
+  $('divisionRows').innerHTML = sorted.map(item => {
+    const p = item.pencapaian_persen;
+    const cls = p == null ? 'warn' : p >= 100 ? 'good' : p >= 80 ? 'warn' : 'bad';
+    const variance = Number(item.selisih_ton || 0);
+    return `<tr>
+      <td>${item.division_code}</td>
+      <td>${item.estate_code}</td>
+      <td class="num">${number(item.anggaran_ton)}</td>
+      <td class="num">${number(item.realisasi_ton)}</td>
+      <td class="num">${variance > 0 ? '+' : ''}${number(variance)}</td>
+      <td><span class="pill ${cls}">${pct(p)}</span></td>
+    </tr>`;
+  }).join('');
+
+  $('divisionCards').innerHTML = sorted.map(item => {
+    const p = item.pencapaian_persen;
+    const cls = p == null ? 'warn' : p >= 100 ? 'good' : p >= 80 ? 'warn' : 'bad';
+    const variance = Number(item.selisih_ton || 0);
+    const varianceClass = variance >= 0 ? 'positive' : 'negative';
+    const width = Math.max(0, Math.min(100, Number(p || 0)));
+    return `<article class="division-card">
+      <div class="division-card-head">
+        <div>
+          <div class="division-name">${item.division_code}</div>
+          <div class="division-estate">Estate ${item.estate_code}</div>
+        </div>
+        <span class="pill ${cls}">${pct(p)}</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill ${cls}" style="width:${width}%"></div>
+      </div>
+      <div class="division-metrics">
+        <div class="metric">
+          <span>Anggaran</span>
+          <strong>${number(item.anggaran_ton)}</strong>
+          <small>ton</small>
+        </div>
+        <div class="metric">
+          <span>Realisasi</span>
+          <strong>${number(item.realisasi_ton)}</strong>
+          <small>ton</small>
+        </div>
+        <div class="metric">
+          <span>Selisih</span>
+          <strong class="${varianceClass}">${variance > 0 ? '+' : ''}${number(variance)}</strong>
+          <small>ton</small>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
+}
+
+function updateKPIs(estates, divisions) {
+  const allSelected = !$('estateFilter').value && dashboardSummary;
+  const budget = allSelected
+    ? Number(dashboardSummary.total_anggaran_ton || 0)
+    : estates.reduce((s,x)=>s+Number(x.anggaran_ton||0),0);
+  const actual = allSelected
+    ? Number(dashboardSummary.total_realisasi_ton || 0)
+    : estates.reduce((s,x)=>s+Number(x.realisasi_ton||0),0);
+  const variance = allSelected
+    ? Number(dashboardSummary.selisih_ton || 0)
+    : actual-budget;
+  const achievement = allSelected
+    ? dashboardSummary.pencapaian_persen
+    : (budget ? actual/budget*100 : null);
+  $('budget').textContent = number(budget);
+  $('actual').textContent = number(actual);
+  $('variance').textContent = (variance > 0 ? '+' : '') + number(variance);
+  $('achievement').textContent = pct(achievement);
+  $('varianceNote').textContent = variance >= 0 ? 'Realisasi di atas anggaran' : 'Realisasi di bawah anggaran';
+  $('achievementNote').textContent = divisions.filter(x=>Number(x.pencapaian_persen)>=100).length + ' divisi mencapai ≥ 100%';
+}
+function updateInsights(estates, divisions) {
+  const achieved = divisions.filter(
+    d => d.pencapaian_persen != null && Number(d.pencapaian_persen) >= 100
+  ).length;
+
+  const attention = divisions.filter(
+    d => d.pencapaian_persen != null && Number(d.pencapaian_persen) < 80
+  ).length;
+
+  const ranked = [...estates].filter(
+    e => e.pencapaian_persen != null
+  ).sort(
+    (a, b) => Number(b.pencapaian_persen) - Number(a.pencapaian_persen)
+  );
+
+  $('targetCount').textContent = achieved + ' divisi';
+  $('attentionCount').textContent = attention + ' divisi';
+
+  if (ranked.length) {
+    $('bestEstate').textContent = ranked[0].estate_code;
+    $('bestEstatePct').textContent =
+      'Pencapaian ' + pct(ranked[0].pencapaian_persen);
+  } else {
+    $('bestEstate').textContent = '—';
+    $('bestEstatePct').textContent = 'Data belum tersedia';
+  }
+}
+
+function applyFilter() {
+  const code = $('estateFilter').value;
+  const estates = code ? allEstates.filter(x=>x.estate_code===code) : allEstates;
+  const divisions = code ? allDivisions.filter(x=>x.estate_code===code) : allDivisions;
+  updateKPIs(estates, divisions);
+  updateInsights(estates, divisions);
+  renderComparisonChart(estates);
+  renderDivisions(divisions);
+  $('tableSubtitle').textContent = code ? 'Pencapaian divisi estate ' + code : 'Perbandingan anggaran dan realisasi per divisi';
+}
+async function loadDashboard() {
+  $('status').textContent = 'Memuat data dari database...';
+  $('status').className = 'status';
+  $('refreshBtn').disabled = true;
+  try {
+    const [summary, estateResult, divisionResult] = await Promise.all([
+      getJSON('/api/summary'),
+      getJSON('/api/estates'),
+      getJSON('/api/divisions')
+    ]);
+    dashboardSummary = summary;
+    allEstates = estateResult.items || [];
+    allDivisions = divisionResult.items || [];
+    const select = $('estateFilter');
+    const previous = select.value;
+    select.innerHTML = '<option value="">Semua Estate</option>' +
+      allEstates.map(e=>`<option value="${e.estate_code}">${e.estate_code}</option>`).join('');
+    if ([...select.options].some(o=>o.value===previous)) select.value=previous;
+    $('today').textContent =
+      'Anggaran ' + (summary.tanggal_laporan_anggaran || '—') +
+      ' · Realisasi ' + (summary.tanggal_laporan_realisasi || '—');
+    applyFilter();
+    $('status').textContent = 'Data berhasil dimuat · ' + allEstates.length + ' estate · ' + allDivisions.length + ' divisi';
+  } catch(error) {
+    $('status').textContent = 'Gagal memuat data: ' + error.message;
+    $('status').className = 'status error';
+  } finally {
+    $('refreshBtn').disabled = false;
+  }
+}
+$('estateFilter').addEventListener('change', applyFilter);
+$('divisionSort').addEventListener('change', applyFilter);
+$('refreshBtn').addEventListener('click', loadDashboard);
+const sidebar = document.querySelector('.sidebar');
+const sidebarOverlay = $('sidebarOverlay');
+const menuBtn = $('menuBtn');
+
+function setSidebarOpen(open) {
+  sidebar.classList.toggle('open', open);
+  sidebarOverlay.classList.toggle('open', open);
+  document.body.classList.toggle('sidebar-open', open);
+  menuBtn.setAttribute('aria-expanded', String(open));
+  menuBtn.setAttribute('aria-label', open ? 'Tutup menu' : 'Buka menu');
+}
+
+menuBtn.setAttribute('aria-expanded', 'false');
+menuBtn.addEventListener('click', () => {
+  setSidebarOpen(!sidebar.classList.contains('open'));
+});
+sidebarOverlay.addEventListener('click', () => setSidebarOpen(false));
+sidebar.querySelectorAll('a.nav-link').forEach(link => {
+  link.addEventListener('click', () => setSidebarOpen(false));
+});
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 720) setSidebarOpen(false);
+});
+loadDashboard();
+</script>
+</body>
+</html>
