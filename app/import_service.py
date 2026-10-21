@@ -3,7 +3,6 @@ from decimal import Decimal
 from pathlib import Path
 import hashlib
 import os
-import tempfile
 
 import openpyxl
 import psycopg
@@ -17,6 +16,9 @@ ACTIVE = {
     "BHPE": 4,
     "SPGE": 3,
 }
+
+MAX_WORKSHEET_ROWS = 1000
+MAX_WORKSHEET_COLUMNS = 40
 
 SHEETS = {
     "budget": ("Budget Produksi", "production_budgets", "budget_date", "budget_ton",
@@ -44,13 +46,18 @@ def validate_workbook(path: Path, kind: str):
         raise ValueError("Jenis impor harus budget atau actual.")
 
     sheet_name = SHEETS[kind][0]
-    workbook = openpyxl.load_workbook(path, read_only=False, data_only=False)
+    workbook = openpyxl.load_workbook(path, read_only=True, data_only=False)
 
     try:
         if sheet_name not in workbook.sheetnames:
             raise ValueError(f"Sheet {sheet_name!r} tidak ditemukan.")
 
         ws = workbook[sheet_name]
+        if ws.max_row > MAX_WORKSHEET_ROWS or ws.max_column > MAX_WORKSHEET_COLUMNS:
+            raise ValueError(
+                "Ukuran workbook melampaui batas yang diizinkan "
+                f"({MAX_WORKSHEET_ROWS} baris, {MAX_WORKSHEET_COLUMNS} kolom)."
+            )
         report_date = parse_date(ws["B3"].value)
         if not report_date:
             raise ValueError(f"Tanggal laporan di B3 tidak valid: {ws['B3'].value!r}")
@@ -155,7 +162,12 @@ def save_import(
                 raise ValueError(f"File identik sudah diimpor pada batch {existing[0]}.")
 
             cur.execute(
-                "SELECT code, id FROM divisions WHERE is_active=TRUE"
+                """
+                SELECT d.code, d.id
+                FROM divisions d
+                JOIN estates e ON e.id = d.estate_id
+                WHERE d.is_active = TRUE AND e.is_active = TRUE
+                """
             )
             division_ids = dict(cur.fetchall())
 

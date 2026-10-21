@@ -3,7 +3,7 @@ from contextlib import closing
 
 import psycopg
 from psycopg.rows import dict_row
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql:///pems_db")
 
@@ -58,7 +58,7 @@ def health():
 
 @app.get("/api/summary")
 def summary():
-    return fetch_one("""
+    row = fetch_one("""
         SELECT
             COUNT(*)::INTEGER AS jumlah_divisi,
             COUNT(DISTINCT estate_code)::INTEGER AS jumlah_estate,
@@ -74,6 +74,16 @@ def summary():
             ) AS pencapaian_persen
         FROM v_pems_comparison_division
     """)
+    return row or {
+        "jumlah_divisi": 0,
+        "jumlah_estate": 0,
+        "tanggal_laporan_anggaran": None,
+        "tanggal_laporan_realisasi": None,
+        "total_anggaran_ton": 0,
+        "total_realisasi_ton": 0,
+        "selisih_ton": 0,
+        "pencapaian_persen": None,
+    }
 
 
 @app.get("/api/estates")
@@ -145,17 +155,23 @@ def dashboard():
 
 
 # Endpoint impor didaftarkan langsung pada aplikasi utama
-from app.import_routes import import_preview, import_confirm
+from app.import_routes import (
+    import_preview,
+    import_confirm,
+    require_import_api_key,
+)
 
 app.add_api_route(
     "/api/import/preview",
     import_preview,
     methods=["POST"],
     tags=["Import Excel"],
+    dependencies=[Depends(require_import_api_key)],
 )
 app.add_api_route(
     "/api/import/confirm",
     import_confirm,
     methods=["POST"],
     tags=["Import Excel"],
+    dependencies=[Depends(require_import_api_key)],
 )

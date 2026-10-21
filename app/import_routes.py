@@ -9,7 +9,7 @@ from pathlib import Path
 
 import psycopg
 from openpyxl.utils.exceptions import InvalidFileException
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.import_service import validate_workbook, save_import
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/api/import", tags=["Import Excel"])
 STAGING = Path(__file__).resolve().parent.parent / "imports" / "staging"
 MAX_UPLOAD = 20 * 1024 * 1024
 TOKEN_TTL = 10 * 60
+IMPORT_API_KEY_ENV = "PEMS_IMPORT_API_KEY"
 
 _pending = {}
 _processing_paths = set()
@@ -28,6 +29,25 @@ logger = logging.getLogger(__name__)
 
 class ConfirmRequest(BaseModel):
     token: str
+
+
+def require_import_api_key(
+    x_pems_import_key: str | None = Header(default=None),
+):
+    """Lindungi endpoint mutasi impor tanpa menyimpan kredensial di Git."""
+    expected = os.getenv(IMPORT_API_KEY_ENV)
+    if not expected:
+        raise HTTPException(
+            status_code=503,
+            detail=f"{IMPORT_API_KEY_ENV} belum dikonfigurasi.",
+        )
+    if not x_pems_import_key or not secrets.compare_digest(
+        x_pems_import_key, expected
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="API key impor tidak valid.",
+        )
 
 
 def cleanup_expired():
@@ -156,7 +176,7 @@ def import_preview(
             )
 
         try:
-            preview = validate_workbook(temp_path, kind)
+                preview = validate_workbook(temp_path, kind)
         except (zipfile.BadZipFile, InvalidFileException) as exc:
             raise HTTPException(
                 status_code=422,

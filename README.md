@@ -35,10 +35,16 @@ python -m venv .venv
 source .venv/bin/activate
 ```
 
-Instal dependensi:
+Instalasi dependensi:
 
 ```bash
 python -m pip install -r installer/requirements.txt
+```
+
+Untuk pengembangan dan pengujian, gunakan dependensi tambahan:
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 ## Konfigurasi database
@@ -56,6 +62,19 @@ Jangan menaruh kata sandi asli dalam README atau repositori Git.
 
 PEMS tidak menjalankan migrasi skema database secara otomatis ketika server dimulai. Pastikan skema yang diperlukan sudah diterapkan secara terencana.
 
+Urutan penerapan database untuk instalasi baru:
+
+```bash
+psql "$DATABASE_URL" -f sql/schema.sql
+psql "$DATABASE_URL" -f sql/003_reference_data.sql
+psql "$DATABASE_URL" -f sql/004_dashboard_views.sql
+```
+
+File `sql/002_production_actuals.sql` disediakan untuk database lama yang sudah
+memakai `schema.sql` versi sebelumnya. Untuk instalasi baru, tabel actual sudah
+tercakup dalam `schema.sql`; menjalankan file tersebut juga aman karena bersifat
+idempoten.
+
 ## Menjalankan aplikasi
 
 Setelah virtual environment aktif dan DATABASE_URL dikonfigurasi:
@@ -66,7 +85,17 @@ bash installer/start.sh
 
 Dashboard: http://127.0.0.1:8000/dashboard
 Pemeriksaan kesehatan: http://127.0.0.1:8000/health
+```
 
+Endpoint impor dilindungi API key. Sebelum menjalankan server, tentukan key
+secara lokal dan jangan commit nilainya ke Git:
+
+```bash
+export PEMS_IMPORT_API_KEY='ganti-dengan-random-string-panjang'
+```
+
+Kirim key tersebut melalui header `X-PEMS-Import-Key` pada request preview dan
+confirm. Jika key belum dikonfigurasi, endpoint impor akan menolak request.
 ## Pengujian
 
 Jalankan pengujian hanya setelah database pengujian terpisah disiapkan:
@@ -74,6 +103,9 @@ Jalankan pengujian hanya setelah database pengujian terpisah disiapkan:
 ```bash
 python -m pytest -q
 ```
+
+Test integrasi rollback hanya berjalan jika `DATABASE_URL` menunjuk tepat ke
+database bernama `pems_test_import`.
 
 Jangan menjalankan pengujian yang dapat mengubah database produksi.
 

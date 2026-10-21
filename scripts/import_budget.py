@@ -212,7 +212,7 @@ def main():
     print(f"SHA-256          : {file_hash}")
     print(f"Tanggal laporan  : {report_date}")
     print(f"Sheet            : {SHEET}")
-    print(f"Jumlah divisi    : 24")
+    print("Jumlah divisi    : 24")
     print(f"Jumlah hari      : {report_date.day}")
     print(f"Jumlah record    : {len(records)}")
     print(f"Total budget     : {total:,.4f} ton")
