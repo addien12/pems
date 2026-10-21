@@ -1,27 +1,27 @@
-import os
 import json
 import logging
-import zipfile
-import time
+import os
 import secrets
 import threading
+import time
+import zipfile
 from pathlib import Path
 
 import psycopg
-from openpyxl.utils.exceptions import InvalidFileException
 from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
+from openpyxl.utils.exceptions import InvalidFileException
 from pydantic import BaseModel
 
-from app.import_service import validate_workbook, save_import
+from app.import_service import save_import, validate_workbook
 
 router = APIRouter(prefix="/api/import", tags=["Import Excel"])
-
 STAGING = Path(__file__).resolve().parent.parent / "imports" / "staging"
 MAX_UPLOAD = 20 * 1024 * 1024
 TOKEN_TTL = 10 * 60
 IMPORT_API_KEY_ENV = "PEMS_IMPORT_API_KEY"
 
 _pending = {}
+_uploading_paths = set()
 _processing_paths = set()
 _lock = threading.Lock()
 logger = logging.getLogger(__name__)
@@ -50,47 +50,66 @@ def require_import_api_key(
         )
 
 
+def _active_paths_locked():
+    """Caller harus memegang _lock saat membaca lifecycle path."""
+    active_paths = {
+        item["path"].resolve()
+        for item in _pending.values()
+    }
+    active_paths.update(path.resolve() for path in _uploading_paths)
+    active_paths.update(path.resolve() for path in _processing_paths)
+    return active_paths
+
+
+def _unlink_if_inactive(path: Path):
+    """Hapus path hanya setelah status aktif diperiksa secara atomik terhadap lock."""
+    with _lock:
+        if path.resolve() in _active_paths_locked():
+            return False
+        try:
+            path.unlink(missing_ok=True)
+            return True
+        except OSError:
+            logger.warning("Tidak dapat menghapus file staging: %s", path.name)
+            return False
+
+
 def cleanup_expired():
     now = time.monotonic()
-    expired = []
+    expired_paths = []
 
     with _lock:
         for token, item in list(_pending.items()):
             if item["expires"] <= now:
-                expired.append(_pending.pop(token))
+                _pending.pop(token, None)
+                expired_paths.append(item["path"])
 
-    for item in expired:
-        try:
-            item["path"].unlink(missing_ok=True)
-        except OSError:
-            pass
+    for path in expired_paths:
+        _unlink_if_inactive(path)
 
     cleanup_orphaned_staging_files()
+
 
 def cleanup_orphaned_staging_files():
     """Hapus file XLSX yatim yang lebih tua dari 30 menit."""
     cutoff = time.time() - 30 * 60
 
-    with _lock:
-        active_paths = {
-            item["path"].resolve()
-            for item in _pending.values()
-        }
-        active_paths.update(path.resolve() for path in _processing_paths)
-
     try:
+        candidates = []
         for path in STAGING.glob("*.xlsx"):
             try:
-                resolved = path.resolve()
-                if resolved in active_paths:
-                    continue
                 if path.stat().st_mtime < cutoff:
-                    path.unlink(missing_ok=True)
+                    candidates.append(path)
             except OSError:
                 logger.warning(
-                    "Tidak dapat membersihkan file staging: %s",
+                    "Tidak dapat memeriksa file staging: %s",
                     path.name,
                 )
+
+        # _unlink_if_inactive mengambil lock lagi tepat sebelum unlink.
+        # Ini menutup race antara snapshot kandidat dan registrasi upload/confirm.
+        for path in candidates:
+            _unlink_if_inactive(path)
     except OSError:
         logger.exception("Gagal memeriksa direktori staging.")
 
@@ -107,7 +126,6 @@ def record_import_failure(item, reason):
             "filename": item.get("filename"),
             "reason": reason,
         }
-
         with psycopg.connect(database_url) as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -151,8 +169,12 @@ def import_preview(
 
     STAGING.mkdir(parents=True, exist_ok=True)
     temp_path = STAGING / f"{secrets.token_hex(16)}.xlsx"
-    size = 0
+    with _lock:
+        # Registrasi dilakukan sebelum file dibuat/ditulis agar cleanup tidak
+        # dapat menghapus file yang sedang aktif di antara dua operasi tersebut.
+        _uploading_paths.add(temp_path)
 
+    size = 0
     try:
         with temp_path.open("xb") as destination:
             while True:
@@ -176,7 +198,7 @@ def import_preview(
             )
 
         try:
-                preview = validate_workbook(temp_path, kind)
+            preview = validate_workbook(temp_path, kind)
         except (zipfile.BadZipFile, InvalidFileException) as exc:
             raise HTTPException(
                 status_code=422,
@@ -189,8 +211,8 @@ def import_preview(
             ) from exc
 
         token = secrets.token_urlsafe(32)
-
         with _lock:
+            _uploading_paths.discard(temp_path)
             _pending[token] = {
                 "path": temp_path,
                 "kind": kind,
@@ -211,11 +233,14 @@ def import_preview(
             "record_count": preview["record_count"],
             "total_ton": preview["total_ton"],
         }
-
     except HTTPException:
+        with _lock:
+            _uploading_paths.discard(temp_path)
         temp_path.unlink(missing_ok=True)
         raise
     except Exception as exc:
+        with _lock:
+            _uploading_paths.discard(temp_path)
         temp_path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=500,
