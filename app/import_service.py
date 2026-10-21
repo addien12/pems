@@ -36,7 +36,7 @@ IMPORT_PROFILES = {
     "actual": {
         "source_system": "DB LHK REGION",
         "frequency": "daily",
-        "scope": "year_to_date",
+        "scope": "month_to_date",
     },
 }
 
