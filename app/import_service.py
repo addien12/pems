@@ -19,12 +19,25 @@ ACTIVE = {
 
 MAX_WORKSHEET_ROWS = 1000
 MAX_WORKSHEET_COLUMNS = 40
+TON_QUANTUM = Decimal("0.0001")
 
 SHEETS = {
     "budget": ("Budget Produksi", "production_budgets", "budget_date", "budget_ton",
                "IMPORT_BUDGET_PRODUKSI"),
     "actual": ("Produksi Tahun Ini", "production_actuals", "actual_date", "actual_ton",
                "IMPORT_PRODUKSI_AKTUAL"),
+}
+IMPORT_PROFILES = {
+    "budget": {
+        "source_system": "PEMS Budget Workbook",
+        "frequency": "periodic",
+        "scope": "period",
+    },
+    "actual": {
+        "source_system": "DB LHK REGION",
+        "frequency": "daily",
+        "scope": "year_to_date",
+    },
 }
 
 
@@ -46,6 +59,7 @@ def validate_workbook(path: Path, kind: str):
         raise ValueError("Jenis impor harus budget atau actual.")
 
     sheet_name = SHEETS[kind][0]
+    profile = IMPORT_PROFILES[kind]
     workbook = openpyxl.load_workbook(path, read_only=True, data_only=False)
 
     try:
@@ -97,7 +111,7 @@ def validate_workbook(path: Path, kind: str):
                     errors.append(f"{code}, baris {row}, hari {day}: bukan angka ({value!r})")
                     continue
 
-                amount = Decimal(str(value))
+                amount = Decimal(str(value)).quantize(TON_QUANTUM)
                 if not amount.is_finite() or amount < 0:
                     errors.append(f"{code}, hari {day}: nilai tidak valid ({value!r})")
                     continue
@@ -118,6 +132,9 @@ def validate_workbook(path: Path, kind: str):
         return {
             "kind": kind,
             "sheet": sheet_name,
+            "source_system": profile["source_system"],
+            "update_frequency": profile["frequency"],
+            "report_scope": profile["scope"],
             "report_date": report_date.isoformat(),
             "division_count": len(expected),
             "record_count": len(records),
@@ -187,7 +204,12 @@ def save_import(
                 RETURNING id
             """, (
                 filename, file_hash, sheet, preview["report_date"], actor,
-                f"Impor web tervalidasi; {preview['record_count']} record",
+                (
+                    f"Sumber {preview['source_system']}; "
+                    f"scope {preview['report_scope']}; "
+                    f"frekuensi {preview['update_frequency']}; "
+                    f"{preview['record_count']} record"
+                ),
             ))
             batch_id = cur.fetchone()[0]
 
@@ -214,6 +236,8 @@ def save_import(
                     "sha256": file_hash,
                     "record_count": preview["record_count"],
                     "report_date": preview["report_date"],
+                    "source_system": preview["source_system"],
+                    "report_scope": preview["report_scope"],
                 }),
             ))
 
@@ -222,6 +246,9 @@ def save_import(
         "filename": filename,
         "sha256": file_hash,
         "sheet": sheet,
+        "source_system": preview["source_system"],
+        "update_frequency": preview["update_frequency"],
+        "report_scope": preview["report_scope"],
         "report_date": preview["report_date"],
         "record_count": preview["record_count"],
         "total_ton": preview["total_ton"],

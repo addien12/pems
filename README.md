@@ -96,6 +96,37 @@ export PEMS_IMPORT_API_KEY='ganti-dengan-random-string-panjang'
 
 Kirim key tersebut melalui header `X-PEMS-Import-Key` pada request preview dan
 confirm. Jika key belum dikonfigurasi, endpoint impor akan menolak request.
+
+## Workflow impor harian DB LHK REGION
+
+Workbook `DB_LHK_PANEN_REGION_YYYY-MM-DD.xlsx` dapat diunggah melalui menu
+**Impor Data Excel** dengan jenis **Produksi Aktual**. PEMS membaca sheet
+`Produksi Tahun Ini` sebagai data year-to-date sampai tanggal laporan di sel
+`B3`, memetakan 24 divisi aktif, dan menyimpan setiap tanggal harian sebagai
+record realisasi produksi.
+
+Untuk operasi Termux, validasi file terlebih dahulu tanpa mengubah database:
+
+```bash
+DATABASE_URL='postgresql://127.0.0.1:5432/NAMA_DATABASE' \
+  python scripts/import_actual.py \
+  /path/DB_LHK_PANEN_REGION_2026-10-20.xlsx
+```
+
+Jika ringkasan tanggal, jumlah record, dan total ton sudah benar, jalankan
+`--commit` pada database yang memang ditujukan untuk operasional:
+
+```bash
+DATABASE_URL='postgresql://127.0.0.1:5432/NAMA_DATABASE' \
+  PEMS_IMPORT_USER='operator' \
+  python scripts/import_actual.py \
+  /path/DB_LHK_PANEN_REGION_2026-10-20.xlsx --commit
+```
+
+PEMS menolak file identik berdasarkan SHA-256, menyimpan histori batch dan audit,
+serta memilih batch actual dengan tanggal laporan terbaru untuk dashboard. File
+yang sama atau file produksi tidak boleh dimasukkan ke repository Git.
+
 ## Pengujian
 
 Jalankan pengujian hanya setelah database pengujian terpisah disiapkan:
