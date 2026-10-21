@@ -25,7 +25,7 @@ def make_lhk_workbook(path):
     workbook.close()
 
 
-def test_lhk_region_profile_is_daily_year_to_date(tmp_path):
+def test_lhk_region_profile_is_daily_month_to_date(tmp_path):
     path = tmp_path / "DB_LHK_PANEN_REGION_2026-10-20.xlsx"
     make_lhk_workbook(path)
 
@@ -33,7 +33,7 @@ def test_lhk_region_profile_is_daily_year_to_date(tmp_path):
 
     assert preview["source_system"] == "DB LHK REGION"
     assert preview["update_frequency"] == "daily"
-    assert preview["report_scope"] == "year_to_date"
+    assert preview["report_scope"] == "month_to_date"
     assert preview["report_date"] == date(2026, 10, 20).isoformat()
     assert preview["division_count"] == 24
     assert preview["record_count"] == 24 * 20

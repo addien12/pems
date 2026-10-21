@@ -101,9 +101,9 @@ confirm. Jika key belum dikonfigurasi, endpoint impor akan menolak request.
 
 Workbook `DB_LHK_PANEN_REGION_YYYY-MM-DD.xlsx` dapat diunggah melalui menu
 **Impor Data Excel** dengan jenis **Produksi Aktual**. PEMS membaca sheet
-`Produksi Tahun Ini` sebagai data year-to-date sampai tanggal laporan di sel
-`B3`, memetakan 24 divisi aktif, dan menyimpan setiap tanggal harian sebagai
-record realisasi produksi.
+`Produksi Tahun Ini` sebagai data month-to-date (MTD), mulai tanggal 1 sampai
+tanggal laporan di sel `B3`, memetakan 24 divisi aktif, dan menyimpan setiap
+tanggal harian sebagai record realisasi produksi.
 
 Untuk operasi Termux, validasi file terlebih dahulu tanpa mengubah database:
 
