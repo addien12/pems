@@ -431,7 +431,7 @@ tbody tr:hover { background:#f1f6fc; }
 .import-preview { margin-top:16px; padding:14px; border:1px solid #dcebe7; border-radius:11px; background:#f4fbf9; }
 .import-preview[hidden] { display:none; }
 .preview-title { color:var(--teal); font-size:11px; font-weight:800; letter-spacing:.4px; text-transform:uppercase; }
-.preview-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:10px; }
+.preview-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-top:10px; }
 .preview-stat { padding:9px; border-radius:8px; background:#fff; }
 .preview-stat span { display:block; color:var(--muted); font-size:10px; }
 .preview-stat strong { display:block; margin-top:3px; font-size:14px; }
@@ -630,7 +630,7 @@ tbody tr:hover { background:#f1f6fc; }
     </form>
     <div class="import-preview" id="importPreview" hidden>
       <div class="preview-title">Preview tervalidasi</div>
-      <div class="preview-grid"><div class="preview-stat"><span>File</span><strong id="previewFile">—</strong></div><div class="preview-stat"><span>Tanggal laporan</span><strong id="previewDate">—</strong></div><div class="preview-stat"><span>Total record</span><strong id="previewRecords">—</strong></div></div>
+      <div class="preview-grid"><div class="preview-stat"><span>Sumber</span><strong id="previewSource">—</strong></div><div class="preview-stat"><span>File</span><strong id="previewFile">—</strong></div><div class="preview-stat"><span>Tanggal laporan</span><strong id="previewDate">—</strong></div><div class="preview-stat"><span>Record YTD</span><strong id="previewRecords">—</strong></div></div>
       <div class="form-hint" style="margin-top:10px">Periksa ringkasan ini sebelum mengonfirmasi penyimpanan.</div>
     </div>
     <div class="import-status" id="importStatus" aria-live="polite"></div>
@@ -979,6 +979,7 @@ $('importForm').addEventListener('submit', async event => {
     const preview = await response.json();
     importToken = preview.token;
     importKey = key;
+    $('previewSource').textContent = preview.source_system || 'PEMS';
     $('previewFile').textContent = preview.filename;
     $('previewDate').textContent = preview.report_date;
     $('previewRecords').textContent = Number(preview.record_count).toLocaleString('id-ID');

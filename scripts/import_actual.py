@@ -11,6 +11,7 @@ import openpyxl
 import psycopg
 
 SHEET = "Produksi Tahun Ini"
+TON_QUANTUM = Decimal("0.0001")
 ACTIVE = {
     "MAGE": 6,
     "BMKE": 4,
@@ -107,7 +108,7 @@ def read_source(path):
                     )
                     continue
 
-                amount = Decimal(str(value))
+                amount = Decimal(str(value)).quantize(TON_QUANTUM)
                 if not amount.is_finite() or amount < 0:
                     errors.append(
                         f"{code}, hari {day}: nilai tidak valid ({value})"
