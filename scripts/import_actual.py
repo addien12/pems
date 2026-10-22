@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from app.ton_validation import validate_ton_amount
 from pathlib import Path
 import argparse
 import hashlib
@@ -11,7 +12,6 @@ import openpyxl
 import psycopg
 
 SHEET = "Produksi Tahun Ini"
-TON_QUANTUM = Decimal("0.0001")
 ACTIVE = {
     "MAGE": 6,
     "BMKE": 4,
@@ -108,10 +108,12 @@ def read_source(path):
                     )
                     continue
 
-                amount = Decimal(str(value)).quantize(TON_QUANTUM)
-                if not amount.is_finite() or amount < 0:
+                try:
+                    amount = validate_ton_amount(value)
+                except ValueError:
                     errors.append(
-                        f"{code}, hari {day}: nilai tidak valid ({value})"
+                        f"{code}, hari {day}: nilai tonase tidak valid "
+                        f"atau presisi melebihi 4 desimal ({value!r})"
                     )
                     continue
 

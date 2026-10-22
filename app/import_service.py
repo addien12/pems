@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from app.ton_validation import validate_ton_amount
 from pathlib import Path
 import hashlib
 import os
@@ -19,7 +20,6 @@ ACTIVE = {
 
 MAX_WORKSHEET_ROWS = 1000
 MAX_WORKSHEET_COLUMNS = 40
-TON_QUANTUM = Decimal("0.0001")
 
 SHEETS = {
     "budget": ("Budget Produksi", "production_budgets", "budget_date", "budget_ton",
@@ -111,9 +111,13 @@ def validate_workbook(path: Path, kind: str):
                     errors.append(f"{code}, baris {row}, hari {day}: bukan angka ({value!r})")
                     continue
 
-                amount = Decimal(str(value)).quantize(TON_QUANTUM)
-                if not amount.is_finite() or amount < 0:
-                    errors.append(f"{code}, hari {day}: nilai tidak valid ({value!r})")
+                try:
+                    amount = validate_ton_amount(value)
+                except ValueError:
+                    errors.append(
+                        f"{code}, hari {day}: nilai tonase tidak valid "
+                        f"atau presisi melebihi 4 desimal ({value!r})"
+                    )
                     continue
 
                 records.append((
