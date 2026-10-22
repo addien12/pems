@@ -147,6 +147,14 @@ def record_import_failure(item, reason):
         logger.exception("Gagal mencatat audit kegagalan impor.")
 
 
+def safe_record_import_failure(item, reason):
+    """Jaga agar kegagalan hook audit tidak mengubah error impor utama."""
+    try:
+        record_import_failure(item, reason)
+    except Exception:
+        logger.exception("Hook audit gagal mencatat kegagalan impor.")
+
+
 @router.post("/preview")
 def import_preview(
     kind: str = Form(...),
@@ -293,24 +301,24 @@ def import_confirm(payload: ConfirmRequest):
     except ValueError as exc:
         message = str(exc)
         if "sudah diimpor" in message.lower():
-            record_import_failure(item, "duplicate")
+            safe_record_import_failure(item, "duplicate")
         else:
-            record_import_failure(item, "validation_or_conflict")
+            safe_record_import_failure(item, "validation_or_conflict")
         raise HTTPException(status_code=409, detail=message) from exc
     except psycopg.errors.UniqueViolation as exc:
-        record_import_failure(item, "duplicate")
+        safe_record_import_failure(item, "duplicate")
         raise HTTPException(
             status_code=409,
             detail="Impor duplikat terdeteksi oleh database.",
         ) from exc
     except psycopg.Error as exc:
-        record_import_failure(item, "database_error")
+        safe_record_import_failure(item, "database_error")
         raise HTTPException(
             status_code=503,
             detail="Database gagal menyimpan impor. Silakan periksa status database.",
         ) from exc
     except Exception as exc:
-        record_import_failure(item, "unexpected_error")
+        safe_record_import_failure(item, "unexpected_error")
         raise HTTPException(
             status_code=500,
             detail="Impor gagal diproses. Silakan periksa status sistem.",
