@@ -34,6 +34,38 @@ def fetch_one(sql, params=None):
     return rows[0] if rows else None
 
 
+def add_period_metadata(row):
+    """Tambahkan status periode tanpa mengubah nilai bisnis tersimpan."""
+    if not row:
+        return row
+    result = dict(row)
+    budget_date = result.get("budget_report_date") or result.get(
+        "tanggal_laporan_anggaran"
+    )
+    actual_date = result.get("actual_report_date") or result.get(
+        "tanggal_laporan_realisasi"
+    )
+    if not budget_date or not actual_date:
+        result["period_status"] = "incomplete"
+        result["period_warning"] = (
+            "Periode belum lengkap; budget dan realisasi belum sama-sama tersedia."
+        )
+    elif budget_date == actual_date:
+        result["period_status"] = "aligned"
+        result["period_warning"] = "Periode budget dan realisasi selaras."
+    else:
+        result["period_status"] = "mismatch"
+        result["period_warning"] = (
+            "Tanggal laporan budget dan realisasi berbeda; "
+            "perbandingan tetap ditampilkan untuk verifikasi."
+        )
+    return result
+
+
+def add_period_metadata_many(rows):
+    return [add_period_metadata(row) for row in rows]
+
+
 @app.get("/")
 def root():
     return {
@@ -57,11 +89,25 @@ def health():
 
 
 @app.get("/api/summary")
-def summary():
-    row = fetch_one("""
+def summary(
+    estate_code: str | None = Query(default=None, max_length=10),
+    division_code: str | None = Query(default=None, max_length=20),
+):
+    filters = []
+    params = []
+    if estate_code:
+        filters.append("estate_code = %s")
+        params.append(estate_code.upper())
+    if division_code:
+        filters.append("division_code = %s")
+        params.append(division_code.upper())
+    where = "WHERE " + " AND ".join(filters) if filters else ""
+    row = fetch_one(f"""
         SELECT
             COUNT(*)::INTEGER AS jumlah_divisi,
             COUNT(DISTINCT estate_code)::INTEGER AS jumlah_estate,
+            MIN(budget_report_date) AS budget_report_date,
+            MIN(actual_report_date) AS actual_report_date,
             MIN(budget_report_date) AS tanggal_laporan_anggaran,
             MIN(actual_report_date) AS tanggal_laporan_realisasi,
             COALESCE(SUM(budget_ton), 0) AS total_anggaran_ton,
@@ -73,8 +119,9 @@ def summary():
                 2
             ) AS pencapaian_persen
         FROM v_pems_comparison_division
-    """)
-    return row or {
+        {where}
+    """, params)
+    return add_period_metadata(row) or {
         "jumlah_divisi": 0,
         "jumlah_estate": 0,
         "tanggal_laporan_anggaran": None,
@@ -83,34 +130,53 @@ def summary():
         "total_realisasi_ton": 0,
         "selisih_ton": 0,
         "pencapaian_persen": None,
+        "period_status": "incomplete",
+        "period_warning": "Belum ada data budget dan realisasi untuk dibandingkan.",
     }
 
 
 @app.get("/api/estates")
-def estates():
-    rows = fetch_all("""
+def estates(
+    estate_code: str | None = Query(default=None, max_length=10),
+    division_code: str | None = Query(default=None, max_length=20),
+):
+    filters = []
+    params = []
+    if estate_code:
+        filters.append("estate_code = %s")
+        params.append(estate_code.upper())
+    if division_code:
+        filters.append("division_code = %s")
+        params.append(division_code.upper())
+    where = "WHERE " + " AND ".join(filters) if filters else ""
+    rows = fetch_all(f"""
         SELECT
             estate_code,
             estate_name,
-            jumlah_divisi,
-            budget_report_date,
-            actual_report_date,
-            budget_ton AS anggaran_ton,
-            actual_ton AS realisasi_ton,
-            variance_ton AS selisih_ton,
-            achievement_pct AS pencapaian_persen
-        FROM v_pems_comparison_estate
+            COUNT(*)::INTEGER AS jumlah_divisi,
+            MIN(budget_report_date) AS budget_report_date,
+            MIN(actual_report_date) AS actual_report_date,
+            SUM(budget_ton)::NUMERIC(14,4) AS anggaran_ton,
+            SUM(actual_ton)::NUMERIC(14,4) AS realisasi_ton,
+            SUM(variance_ton)::NUMERIC(14,4) AS selisih_ton,
+            ROUND(
+                100.0 * SUM(actual_ton) /
+                NULLIF(SUM(budget_ton), 0),
+                2
+            ) AS pencapaian_persen
+        FROM v_pems_comparison_division
+        {where}
+        GROUP BY estate_code, estate_name
         ORDER BY estate_code
-    """)
-    return {"count": len(rows), "items": rows}
+    """, params)
+    return {"count": len(rows), "items": add_period_metadata_many(rows)}
 
 
 @app.get("/api/divisions")
 def divisions(
     estate_code: str | None = Query(default=None, max_length=10),
+    division_code: str | None = Query(default=None, max_length=20),
 ):
-    code = estate_code.upper() if estate_code else None
-
     sql = """
         SELECT
             estate_code,
@@ -126,17 +192,20 @@ def divisions(
         FROM v_pems_comparison_division
     """
 
-    if code:
-        sql += """
-            WHERE estate_code = %s
-            ORDER BY estate_code, division_number
-        """
-        rows = fetch_all(sql, (code,))
-    else:
-        sql += " ORDER BY estate_code, division_number"
-        rows = fetch_all(sql)
+    filters = []
+    params = []
+    if estate_code:
+        filters.append("estate_code = %s")
+        params.append(estate_code.upper())
+    if division_code:
+        filters.append("division_code = %s")
+        params.append(division_code.upper())
+    if filters:
+        sql += " WHERE " + " AND ".join(filters)
+    sql += " ORDER BY estate_code, division_number"
+    rows = fetch_all(sql, params)
 
-    return {"count": len(rows), "items": rows}
+    return {"count": len(rows), "items": add_period_metadata_many(rows)}
 
 
 from pathlib import Path
