@@ -326,4 +326,11 @@ def import_confirm(payload: ConfirmRequest):
     finally:
         with _lock:
             _processing_paths.discard(path)
-        path.unlink(missing_ok=True)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            logger.warning(
+                "Tidak dapat menghapus file staging setelah impor: %s",
+                path.name,
+                exc_info=True,
+            )
