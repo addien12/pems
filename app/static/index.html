@@ -493,6 +493,9 @@ tbody tr:hover { background:#f1f6fc; }
         <select id="estateFilter" aria-label="Filter estate">
           <option value="">Semua Estate</option>
         </select>
+        <select id="divisionFilter" aria-label="Filter divisi">
+          <option value="">Semua Divisi</option>
+        </select>
         <button class="btn btn-secondary" id="openImportBtn">＋ Impor data</button>
         <button class="btn btn-primary" id="refreshBtn">↻ Muat ulang</button>
       </div>
@@ -605,13 +608,13 @@ tbody tr:hover { background:#f1f6fc; }
           <tbody id="divisionRows"><tr><td colspan="6" style="text-align:center">Memuat data...</td></tr></tbody>
         </table>
       </div>
-      <div class="table-footer"><span id="tableCount">Menunggu data</span><span>Ton tanpa desimal · Persentase 2 desimal</span></div>
+      <div class="table-footer"><span id="tableCount">Menunggu data</span><span>Ton dan persentase tanpa desimal</span></div>
       <div class="status" id="status" role="status" aria-live="polite">Menghubungkan ke API PEMS...</div>
     </section>
 
     <footer class="footer">
       <span>© PEMS · Palm Estate Monitoring System</span>
-      <span>Data bersumber dari PostgreSQL · Ton tanpa desimal · Persentase 2 desimal</span>
+      <span>Data bersumber dari PostgreSQL · Ton dan persentase tanpa desimal</span>
     </footer>
   </main>
 </div>
@@ -640,14 +643,18 @@ tbody tr:hover { background:#f1f6fc; }
 <script>
 const $ = id => document.getElementById(id);
 const number = value => Math.round(Number(value || 0)).toLocaleString('id-ID');
-const pct = value => value == null ? '—' : Number(value).toLocaleString('id-ID', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2
-}) + '%';
+const pct = value => value == null ? '—' : Math.round(Number(value)).toLocaleString('id-ID') + '%';
 const tons = value => number(value) + ' ton';
 let allEstates = [];
 let dashboardSummary = null;
 let allDivisions = [];
+let estateCatalog = [];
+let divisionCatalog = [];
+let catalogLoaded = false;
+
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({
+  '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+}[char]));
 
 async function getJSON(url) {
   const response = await fetch(url, {cache:'no-store'});
@@ -684,7 +691,11 @@ function updateDataHealth(summary) {
   const dot = $('healthDot');
   const title = $('healthTitle');
   const detail = $('healthDetail');
-  if (budgetDate && actualDate) {
+  if (summary?.period_status === 'mismatch') {
+    dot.className = 'health-dot';
+    title.textContent = 'Periode budget dan realisasi berbeda';
+    detail.textContent = summary.period_warning;
+  } else if (summary?.period_status === 'aligned' && budgetDate && actualDate) {
     dot.className = 'health-dot ready';
     title.textContent = 'Data budget dan realisasi lengkap';
     detail.textContent = `Budget ${budgetDate} · Realisasi ${actualDate}`;
@@ -710,7 +721,7 @@ function renderChart(target, items, field, isActual) {
     const value = Number(item[field] || 0);
     const width = Math.max(0, value / max * 100);
     return `<div>
-      <div class="bar-info"><strong>${item.estate_code}</strong><span>${number(value)} ton</span></div>
+      <div class="bar-info"><strong>${escapeHTML(item.estate_code)}</strong><span>${number(value)} ton</span></div>
       <div class="track"><div class="bar ${isActual ? 'actual' : ''}" style="width:${width}%"></div></div>
     </div>`;
   }).join('');
@@ -731,7 +742,7 @@ function renderComparisonChart(items) {
     const actual = Number(e.realisasi_ton || 0);
     return `<div class="comparison-row">
       <div class="comparison-info">
-        <strong>${e.estate_code}</strong>
+        <strong>${escapeHTML(e.estate_code)}</strong>
         <span>${number(actual)} / ${number(budget)} ton</span>
       </div>
       <div class="comparison-bars">
@@ -774,8 +785,8 @@ function renderDivisions(items) {
     const cls = p == null ? 'warn' : p >= 100 ? 'good' : p >= 80 ? 'warn' : 'bad';
     const variance = Number(item.selisih_ton || 0);
     return `<tr>
-      <td>${item.division_code}</td>
-      <td>${item.estate_code}</td>
+      <td>${escapeHTML(item.division_code)}</td>
+      <td>${escapeHTML(item.estate_code)}</td>
       <td class="num">${number(item.anggaran_ton)}</td>
       <td class="num">${number(item.realisasi_ton)}</td>
       <td class="num">${variance > 0 ? '+' : ''}${number(variance)}</td>
@@ -792,8 +803,8 @@ function renderDivisions(items) {
     return `<article class="division-card">
       <div class="division-card-head">
         <div>
-          <div class="division-name">${item.division_code}</div>
-          <div class="division-estate">Estate ${item.estate_code}</div>
+          <div class="division-name">${escapeHTML(item.division_code)}</div>
+          <div class="division-estate">Estate ${escapeHTML(item.estate_code)}</div>
         </div>
         <span class="pill ${cls}">${pct(p)}</span>
       </div>
@@ -822,19 +833,10 @@ function renderDivisions(items) {
 }
 
 function updateKPIs(estates, divisions) {
-  const allSelected = !$('estateFilter').value && dashboardSummary;
-  const budget = allSelected
-    ? Number(dashboardSummary.total_anggaran_ton || 0)
-    : estates.reduce((s,x)=>s+Number(x.anggaran_ton||0),0);
-  const actual = allSelected
-    ? Number(dashboardSummary.total_realisasi_ton || 0)
-    : estates.reduce((s,x)=>s+Number(x.realisasi_ton||0),0);
-  const variance = allSelected
-    ? Number(dashboardSummary.selisih_ton || 0)
-    : actual-budget;
-  const achievement = allSelected
-    ? dashboardSummary.pencapaian_persen
-    : (budget ? actual/budget*100 : null);
+  const budget = Number(dashboardSummary?.total_anggaran_ton || 0);
+  const actual = Number(dashboardSummary?.total_realisasi_ton || 0);
+  const variance = Number(dashboardSummary?.selisih_ton || 0);
+  const achievement = dashboardSummary?.pencapaian_persen;
   $('budget').textContent = number(budget);
   $('actual').textContent = number(actual);
   $('variance').textContent = (variance > 0 ? '+' : '') + number(variance);
@@ -870,40 +872,61 @@ function updateInsights(estates, divisions) {
   }
 }
 
-function applyFilter() {
-  const code = $('estateFilter').value;
-  const estates = code ? allEstates.filter(x=>x.estate_code===code) : allEstates;
-  const divisions = code ? allDivisions.filter(x=>x.estate_code===code) : allDivisions;
-  updateKPIs(estates, divisions);
-  updateInsights(estates, divisions);
-  renderComparisonChart(estates);
-  renderDivisions(divisions);
-  $('tableSubtitle').textContent = code ? 'Pencapaian divisi estate ' + code : 'Perbandingan anggaran dan realisasi per divisi';
+function refreshDivisionOptions() {
+  const estateCode = $('estateFilter').value;
+  const divisionSelect = $('divisionFilter');
+  const previous = divisionSelect.value;
+  const options = divisionCatalog.filter(item => !estateCode || item.estate_code === estateCode);
+  divisionSelect.innerHTML = '<option value="">Semua Divisi</option>' +
+    options.map(item => `<option value="${escapeHTML(item.division_code)}">${escapeHTML(item.division_code)}</option>`).join('');
+  if (options.some(item => item.division_code === previous)) divisionSelect.value = previous;
+}
+function filterQuery() {
+  const query = new URLSearchParams();
+  const estateCode = $('estateFilter').value;
+  const divisionCode = $('divisionFilter').value;
+  if (estateCode) query.set('estate_code', estateCode);
+  if (divisionCode) query.set('division_code', divisionCode);
+  const text = query.toString();
+  return text ? '?' + text : '';
 }
 async function loadDashboard() {
   $('status').textContent = 'Memuat data dari database...';
   $('status').className = 'status';
   $('refreshBtn').disabled = true;
   try {
+    const query = filterQuery();
     const [summary, estateResult, divisionResult] = await Promise.all([
-      getJSON('/api/summary'),
-      getJSON('/api/estates'),
-      getJSON('/api/divisions')
+      getJSON('/api/summary' + query),
+      getJSON('/api/estates' + query),
+      getJSON('/api/divisions' + query)
     ]);
     dashboardSummary = summary;
     allEstates = estateResult.items || [];
     allDivisions = divisionResult.items || [];
+    if (!catalogLoaded || !query) {
+      estateCatalog = [...allEstates];
+      divisionCatalog = [...allDivisions];
+      catalogLoaded = true;
+      const estateSelect = $('estateFilter');
+      const previousEstate = estateSelect.value;
+      estateSelect.innerHTML = '<option value="">Semua Estate</option>' +
+        estateCatalog.map(item => `<option value="${escapeHTML(item.estate_code)}">${escapeHTML(item.estate_code)}</option>`).join('');
+      if (estateCatalog.some(item => item.estate_code === previousEstate)) estateSelect.value = previousEstate;
+      refreshDivisionOptions();
+    }
     updateConnectionState(true);
     updateDataHealth(summary);
-    const select = $('estateFilter');
-    const previous = select.value;
-    select.innerHTML = '<option value="">Semua Estate</option>' +
-      allEstates.map(e=>`<option value="${e.estate_code}">${e.estate_code}</option>`).join('');
-    if ([...select.options].some(o=>o.value===previous)) select.value=previous;
     $('today').textContent =
       'Anggaran ' + (summary.tanggal_laporan_anggaran || '—') +
       ' · Realisasi ' + (summary.tanggal_laporan_realisasi || '—');
-    applyFilter();
+    updateKPIs(allEstates, allDivisions);
+    updateInsights(allEstates, allDivisions);
+    renderComparisonChart(allEstates);
+    renderDivisions(allDivisions);
+    const estateLabel = $('estateFilter').value ? ' estate ' + $('estateFilter').value : '';
+    const divisionLabel = $('divisionFilter').value ? ' · divisi ' + $('divisionFilter').value : '';
+    $('tableSubtitle').textContent = `Perbandingan anggaran dan realisasi${estateLabel}${divisionLabel}`;
     $('status').textContent = 'Data berhasil dimuat · ' + allEstates.length + ' estate · ' + allDivisions.length + ' divisi';
   } catch(error) {
     showConnectionError(error);
@@ -913,8 +936,12 @@ async function loadDashboard() {
     $('refreshBtn').disabled = false;
   }
 }
-$('estateFilter').addEventListener('change', applyFilter);
-$('divisionSort').addEventListener('change', applyFilter);
+$('estateFilter').addEventListener('change', () => {
+  refreshDivisionOptions();
+  loadDashboard();
+});
+$('divisionFilter').addEventListener('change', loadDashboard);
+$('divisionSort').addEventListener('change', () => renderDivisions(allDivisions));
 $('refreshBtn').addEventListener('click', loadDashboard);
 let importToken = null;
 let importKey = '';
