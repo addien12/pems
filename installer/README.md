@@ -19,3 +19,23 @@ Installer tidak menjalankan SQL dan tidak membuat, menghapus, atau mengubah data
 - Jangan memilih database utama sebelum backup dan pemeriksaan konfigurasi.
 - Backup database perlu dilakukan secara terpisah menggunakan `pg_dump`.
 - Endpoint impor memerlukan header `X-PEMS-Import-Key` yang nilainya sama dengan `PEMS_IMPORT_API_KEY`.
+
+## Clipboard output Termux
+
+Pasang dukungan clipboard dan jalankan helper:
+
+```bash
+pkg install termux-api
+bash installer/copy-output.sh python -m pytest -q
+```
+
+Output tetap tampil di terminal dan otomatis disalin ke clipboard Android.
+Helper juga mendukung pipe, file, dan teks langsung:
+
+```bash
+git diff | bash installer/copy-output.sh
+bash installer/copy-output.sh --file hasil-test.txt
+bash installer/copy-output.sh --text 'teks yang ingin disalin'
+```
+
+Aplikasi Termux:API juga harus terpasang dari sumber yang sama dengan Termux.

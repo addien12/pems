@@ -140,6 +140,26 @@ database bernama `pems_test_import`.
 
 Jangan menjalankan pengujian yang dapat mengubah database produksi.
 
+## Menyalin output coding di Termux
+
+Gunakan helper berikut agar output coding tetap tampil di terminal sekaligus
+disalin ke clipboard Android tanpa selection manual:
+
+```bash
+pkg install termux-api
+bash installer/copy-output.sh python -m pytest -q
+```
+
+Contoh lain:
+
+```bash
+git diff | bash installer/copy-output.sh
+bash installer/copy-output.sh --file hasil-test.txt
+bash installer/copy-output.sh --text 'teks yang ingin disalin'
+```
+
+Paket `termux-api` dan aplikasi Termux:API diperlukan.
+
 ## Struktur proyek
 
 - app/: aplikasi dan endpoint API.
