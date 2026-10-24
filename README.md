@@ -66,6 +66,7 @@ Urutan penerapan database untuk instalasi baru:
 
 ```bash
 psql "$DATABASE_URL" -f sql/schema.sql
+psql "$DATABASE_URL" -f sql/005_authentication.sql
 psql "$DATABASE_URL" -f sql/003_reference_data.sql
 psql "$DATABASE_URL" -f sql/004_dashboard_views.sql
 ```
@@ -96,6 +97,31 @@ export PEMS_IMPORT_API_KEY='ganti-dengan-random-string-panjang'
 
 Kirim key tersebut melalui header `X-PEMS-Import-Key` pada request preview dan
 confirm. Jika key belum dikonfigurasi, endpoint impor akan menolak request.
+
+### Login Admin Utama
+
+Endpoint impor juga dapat memakai sesi login Admin Utama. API key
+`PEMS_IMPORT_API_KEY` tetap dipertahankan sebagai jalur kompatibilitas transisi
+dan tidak boleh dihapus sebelum login berhasil diuji.
+
+Setelah migrasi `sql/005_authentication.sql` diterapkan pada database uji atau
+target deployment, buat akun pertama secara manual melalui environment variable
+sementara. Jangan menulis password ke source code atau log:
+
+```bash
+export DATABASE_URL='postgresql://...'
+export PEMS_ADMIN_USERNAME='admin_utama'
+export PEMS_ADMIN_PASSWORD='password-kuat-minimal-12-karakter'
+python scripts/bootstrap_admin.py
+unset PEMS_ADMIN_PASSWORD
+```
+
+Bootstrap idempoten. Jika username sudah ada, script tidak menimpa password
+atau role yang tersimpan. Login menggunakan cookie sesi HttpOnly, cookie CSRF,
+SameSite Lax, dan masa berlaku delapan jam secara default. Pada deployment
+HTTPS, atur `PEMS_COOKIE_SECURE=true`. Endpoint impor yang memakai cookie
+memerlukan header `X-PEMS-CSRF`; API key lama tetap dapat digunakan sementara
+untuk client non-browser.
 
 ## Workflow impor harian DB LHK REGION
 
@@ -142,8 +168,8 @@ Jangan menjalankan pengujian yang dapat mengubah database produksi.
 
 ## Menyalin output coding di Termux
 
-Gunakan helper berikut agar output coding tetap tampil di terminal sekaligus
-disalin ke clipboard Android tanpa selection manual:
+PEMS menyediakan helper untuk menampilkan output sekaligus menyalinnya ke
+clipboard Android, sehingga tidak perlu melakukan selection manual:
 
 ```bash
 pkg install termux-api
@@ -158,7 +184,8 @@ bash installer/copy-output.sh --file hasil-test.txt
 bash installer/copy-output.sh --text 'teks yang ingin disalin'
 ```
 
-Paket `termux-api` dan aplikasi Termux:API diperlukan.
+Perintah memerlukan paket `termux-api` dan aplikasi Termux:API. Output tetap
+tampil di terminal, sedangkan hasil lengkapnya disalin ke clipboard Android.
 
 ## Struktur proyek
 

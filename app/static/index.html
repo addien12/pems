@@ -496,6 +496,9 @@ tbody tr:hover { background:#f1f6fc; }
         <select id="divisionFilter" aria-label="Filter divisi">
           <option value="">Semua Divisi</option>
         </select>
+        <span id="authUser" class="form-hint">Belum login</span>
+        <button class="btn btn-secondary" id="loginBtn" type="button">Login admin</button>
+        <button class="btn btn-secondary" id="logoutBtn" type="button" hidden>Logout</button>
         <button class="btn btn-secondary" id="openImportBtn">＋ Impor data</button>
         <button class="btn btn-primary" id="refreshBtn">↻ Muat ulang</button>
       </div>
@@ -619,6 +622,17 @@ tbody tr:hover { background:#f1f6fc; }
   </main>
 </div>
 </div>
+<div class="modal-backdrop" id="loginDialog" hidden role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <section class="modal-card">
+    <div class="modal-head"><div><h3 id="loginTitle">Login Admin Utama</h3><p>Login diperlukan untuk melakukan impor data.</p></div><button class="modal-close" id="closeLoginBtn" type="button" aria-label="Tutup dialog">×</button></div>
+    <form id="loginForm" class="form-grid">
+      <div class="form-field"><label for="loginUsername">Username</label><input id="loginUsername" autocomplete="username" required maxlength="100"></div>
+      <div class="form-field"><label for="loginPassword">Password</label><input id="loginPassword" type="password" autocomplete="current-password" required maxlength="1024"></div>
+      <button class="btn btn-primary" type="submit" id="loginSubmitBtn">Login</button>
+    </form>
+    <div class="import-status" id="loginStatus" aria-live="polite"></div>
+  </section>
+</div>
 <div class="modal-backdrop" id="importDialog" hidden role="dialog" aria-modal="true" aria-labelledby="importTitle">
   <section class="modal-card">
     <div class="modal-head">
@@ -628,7 +642,7 @@ tbody tr:hover { background:#f1f6fc; }
     <form id="importForm" class="form-grid">
       <div class="form-field"><label for="importKind">Jenis data</label><select id="importKind"><option value="budget">Budget Produksi</option><option value="actual">Produksi Aktual</option></select></div>
       <div class="form-field"><label for="importFile">Workbook Excel (.xlsx)</label><input id="importFile" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><span class="form-hint">Maksimal 20 MB. Pastikan sheet dan format mengikuti template PEMS.</span></div>
-      <div class="form-field"><label for="importApiKey">API key impor</label><input id="importApiKey" type="password" autocomplete="off" required><span class="form-hint">Key hanya digunakan selama sesi ini dan tidak disimpan browser.</span></div>
+      <div class="form-hint">Import menggunakan sesi Admin Utama yang sedang login. Sesi API key lama tetap tersedia untuk kompatibilitas operasional.</div>
       <button class="btn btn-primary" type="submit" id="previewImportBtn">Validasi & tampilkan preview</button>
     </form>
     <div class="import-preview" id="importPreview" hidden>
@@ -657,7 +671,7 @@ const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, char => ({
 }[char]));
 
 async function getJSON(url) {
-  const response = await fetch(url, {cache:'no-store'});
+  const response = await fetch(url, {cache:'no-store', credentials:'same-origin'});
   if (!response.ok) {
     const error = new Error(
       response.status === 503
@@ -943,15 +957,50 @@ $('estateFilter').addEventListener('change', () => {
 $('divisionFilter').addEventListener('change', loadDashboard);
 $('divisionSort').addEventListener('change', () => renderDivisions(allDivisions));
 $('refreshBtn').addEventListener('click', loadDashboard);
+let currentUser = null;
 let importToken = null;
 let importKey = '';
 const importDialog = $('importDialog');
+const loginDialog = $('loginDialog');
+function csrfToken() {
+  const match = document.cookie.match(/(?:^|; )pems_csrf=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
+}
+function updateAuthUI() {
+  const loggedIn = Boolean(currentUser);
+  $('authUser').textContent = loggedIn ? currentUser.username + ' · ' + currentUser.role : 'Belum login';
+  $('loginBtn').hidden = loggedIn;
+  $('logoutBtn').hidden = !loggedIn;
+  $('openImportBtn').disabled = !loggedIn;
+}
+async function loadCurrentUser() {
+  try {
+    const response = await fetch('/api/auth/me', {credentials:'same-origin', cache:'no-store'});
+    currentUser = response.ok ? await response.json() : null;
+  } catch (_) {
+    currentUser = null;
+  }
+  updateAuthUI();
+}
+function openLoginDialog() {
+  loginDialog.hidden = false;
+  $('loginUsername').focus();
+}
+function closeLoginDialog() {
+  loginDialog.hidden = true;
+  $('loginForm').reset();
+  $('loginStatus').textContent = '';
+}
 function setImportStatus(message, state = '') {
   const node = $('importStatus');
   node.textContent = message;
   node.className = 'import-status' + (state ? ' ' + state : '');
 }
 function openImportDialog() {
+  if (!currentUser) {
+    openLoginDialog();
+    return;
+  }
   importDialog.hidden = false;
   $('importKind').focus();
 }
@@ -972,6 +1021,42 @@ async function parseApiError(response) {
     return `API gagal: ${response.status}`;
   }
 }
+$('loginBtn').addEventListener('click', openLoginDialog);
+$('closeLoginBtn').addEventListener('click', closeLoginDialog);
+loginDialog.addEventListener('click', event => {
+  if (event.target === loginDialog) closeLoginDialog();
+});
+$('loginForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  const button = $('loginSubmitBtn');
+  button.disabled = true;
+  $('loginStatus').textContent = 'Memeriksa kredensial...';
+  try {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify({username: $('loginUsername').value, password: $('loginPassword').value})
+    });
+    if (!response.ok) throw new Error(await parseApiError(response));
+    currentUser = await response.json();
+    updateAuthUI();
+    closeLoginDialog();
+  } catch (error) {
+    $('loginStatus').textContent = error.message;
+    $('loginStatus').className = 'import-status error';
+  } finally {
+    button.disabled = false;
+  }
+});
+$('logoutBtn').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', {
+    method: 'POST', credentials: 'same-origin',
+    headers: {'X-PEMS-CSRF': csrfToken()}
+  });
+  currentUser = null;
+  updateAuthUI();
+});
 $('openImportBtn').addEventListener('click', openImportDialog);
 $('openImportNav').addEventListener('click', event => {
   event.preventDefault();
@@ -985,9 +1070,8 @@ importDialog.addEventListener('click', event => {
 $('importForm').addEventListener('submit', async event => {
   event.preventDefault();
   const file = $('importFile').files[0];
-  const key = $('importApiKey').value.trim();
-  if (!file || !key) {
-    setImportStatus('Pilih workbook dan masukkan API key terlebih dahulu.', 'error');
+  if (!file || !currentUser) {
+    setImportStatus('Login sebagai Admin Utama sebelum mengimpor.', 'error');
     return;
   }
   const button = $('previewImportBtn');
@@ -999,13 +1083,13 @@ $('importForm').addEventListener('submit', async event => {
     form.append('file', file);
     const response = await fetch('/api/import/preview', {
       method: 'POST',
-      headers: {'X-PEMS-Import-Key': key},
+      headers: {'X-PEMS-CSRF': csrfToken()},
+      credentials: 'same-origin',
       body: form
     });
     if (!response.ok) throw new Error(await parseApiError(response));
     const preview = await response.json();
     importToken = preview.token;
-    importKey = key;
     $('previewSource').textContent = preview.source_system || 'PEMS';
     $('previewFile').textContent = preview.filename;
     $('previewDate').textContent = preview.report_date;
@@ -1027,7 +1111,8 @@ $('confirmImportBtn').addEventListener('click', async () => {
   try {
     const response = await fetch('/api/import/confirm', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-PEMS-Import-Key': importKey},
+      headers: {'Content-Type': 'application/json', 'X-PEMS-CSRF': csrfToken()},
+      credentials: 'same-origin',
       body: JSON.stringify({token: importToken})
     });
     if (!response.ok) throw new Error(await parseApiError(response));
@@ -1062,6 +1147,7 @@ sidebar.querySelectorAll('a.nav-link').forEach(link => {
 window.addEventListener('resize', () => {
   if (window.innerWidth > 720) setSidebarOpen(false);
 });
+loadCurrentUser();
 loadDashboard();
 </script>
 </body>

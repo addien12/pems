@@ -3,7 +3,7 @@ from contextlib import closing
 
 import psycopg
 from psycopg.rows import dict_row
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql:///pems_db")
 
@@ -210,6 +210,13 @@ def divisions(
 
 from pathlib import Path
 from fastapi.responses import FileResponse
+from app.auth import (
+    LoginRequest,
+    login,
+    logout,
+    require_import_auth,
+    require_session,
+)
 
 
 @app.get("/dashboard", include_in_schema=False)
@@ -223,11 +230,25 @@ def dashboard():
     return FileResponse(page)
 
 
+@app.post("/api/auth/login")
+def auth_login(request: Request, response: Response, payload: LoginRequest):
+    return login(request, response, payload)
+
+
+@app.post("/api/auth/logout")
+def auth_logout(request: Request, response: Response):
+    return logout(request, response)
+
+
+@app.get("/api/auth/me")
+def auth_me(user=Depends(require_session)):
+    return {"username": user["username"], "role": user["role"]}
+
+
 # Endpoint impor didaftarkan langsung pada aplikasi utama
 from app.import_routes import (
     import_preview,
     import_confirm,
-    require_import_api_key,
 )
 
 app.add_api_route(
@@ -235,12 +256,12 @@ app.add_api_route(
     import_preview,
     methods=["POST"],
     tags=["Import Excel"],
-    dependencies=[Depends(require_import_api_key)],
+    dependencies=[Depends(require_import_auth)],
 )
 app.add_api_route(
     "/api/import/confirm",
     import_confirm,
     methods=["POST"],
     tags=["Import Excel"],
-    dependencies=[Depends(require_import_api_key)],
+    dependencies=[Depends(require_import_auth)],
 )
