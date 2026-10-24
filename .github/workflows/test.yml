@@ -33,6 +33,7 @@ jobs:
           PGPASSWORD: postgres
         run: |
           psql -h 127.0.0.1 -U postgres -d pems_test_import -f sql/schema.sql
+          psql -h 127.0.0.1 -U postgres -d pems_test_import -f sql/005_authentication.sql
           psql -h 127.0.0.1 -U postgres -d pems_test_import -f sql/003_reference_data.sql
           psql -h 127.0.0.1 -U postgres -d pems_test_import -f sql/004_dashboard_views.sql
       - name: Compile
