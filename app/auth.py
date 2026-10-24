@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import psycopg
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from pydantic import BaseModel, Field
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql:///pems_db")
@@ -126,21 +126,21 @@ def get_session_user(request):
         raise HTTPException(503, "Database PEMS tidak dapat diakses.") from exc
 
 
-def require_session(request):
+def require_session(request: Request):
     user = get_session_user(request)
     if not user:
         raise HTTPException(401, "Login diperlukan.")
     return user
 
 
-def require_admin(request):
+def require_admin(request: Request):
     user = require_session(request)
     if user["role"] != "admin_utama":
         raise HTTPException(403, "Akses tidak diizinkan.")
     return user
 
 
-def require_csrf(request, user):
+def require_csrf(request: Request, user):
     token = request.cookies.get(CSRF_COOKIE)
     header = request.headers.get("X-PEMS-CSRF")
     if not token or not header or not hmac.compare_digest(token, header):
@@ -156,7 +156,7 @@ def require_csrf(request, user):
                 raise HTTPException(403, "Token CSRF tidak valid.")
 
 
-def require_import_auth(request):
+def require_import_auth(request: Request):
     user = get_session_user(request)
     if user:
         require_csrf(request, user)
@@ -207,6 +207,9 @@ def login(request, response, payload):
 def logout(request, response):
     token = request.cookies.get(SESSION_COOKIE)
     if token:
+        user = get_session_user(request)
+        if user:
+            require_csrf(request, user)
         try:
             with _connect() as connection:
                 with connection.cursor() as cursor:
