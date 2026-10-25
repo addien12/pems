@@ -1,9 +1,11 @@
 import os
 from contextlib import closing
+from datetime import date
 
 import psycopg
 from psycopg.rows import dict_row
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from app.production_periods import serialize_production_periods
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql:///pems_db")
 
@@ -86,6 +88,14 @@ def health():
         "database": row["database"],
         "checked_at": row["checked_at"],
     }
+
+
+@app.get("/api/production/periods")
+def production_periods(as_of: date | None = Query(default=None)):
+    """Return stable date windows for production KPI aggregation."""
+    report_date = as_of or date.today()
+    source = "query" if as_of else "server_date"
+    return serialize_production_periods(report_date, source)
 
 
 @app.get("/api/summary")
