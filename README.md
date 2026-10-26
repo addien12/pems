@@ -62,6 +62,19 @@ Jangan menaruh kata sandi asli dalam README atau repositori Git.
 
 PEMS tidak menjalankan migrasi skema database secara otomatis ketika server dimulai. Pastikan skema yang diperlukan sudah diterapkan secara terencana.
 
+Sebelum deployment, jalankan pemeriksaan read-only berikut dari root repository:
+
+```bash
+PEMS_ENV=production \
+  DATABASE_URL='postgresql://USER:PASSWORD@HOST/NAMA_DATABASE' \
+  PEMS_COOKIE_SECURE=true \
+  python scripts/predeploy_check.py
+```
+
+Pemeriksaan ini hanya memvalidasi bentuk konfigurasi, secure cookie, dan file
+migrasi yang tersedia. Script tidak mencoba koneksi, tidak menjalankan SQL, dan
+tidak menampilkan nilai `DATABASE_URL` atau secret.
+
 Urutan penerapan database untuk instalasi baru:
 
 ```bash
