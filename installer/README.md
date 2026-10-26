@@ -6,12 +6,22 @@ Paket aplikasi PEMS untuk Termux Android.
 1. Ekstrak ZIP ke folder instalasi baru.
 2. Jalankan `bash installer/install.sh`.
 3. Tentukan `DATABASE_URL` secara eksplisit.
-4. Terapkan `sql/schema.sql`, `sql/003_reference_data.sql`, lalu `sql/004_dashboard_views.sql`.
+4. Terapkan `sql/schema.sql`, `sql/005_authentication.sql`, `sql/003_reference_data.sql`, lalu `sql/004_dashboard_views.sql`.
 5. Tentukan `PEMS_IMPORT_API_KEY` secara lokal.
 6. Jalankan `bash installer/start.sh`.
 7. Buka `http://127.0.0.1:8000/dashboard`.
 
 Installer tidak menjalankan SQL dan tidak membuat, menghapus, atau mengubah database secara otomatis.
+
+Sebelum deployment HTTPS, jalankan readiness check tanpa menampilkan secret:
+
+```bash
+PEMS_ENV=production PEMS_COOKIE_SECURE=true \
+  python scripts/predeploy_check.py
+```
+
+Readiness check hanya memeriksa konfigurasi dan keberadaan file migrasi. Script
+tidak menguji koneksi atau menulis database.
 
 ## Catatan
 - Pastikan PostgreSQL sudah berjalan.
